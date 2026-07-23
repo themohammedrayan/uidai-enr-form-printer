@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UIDAI Form 1 Overlay Printer</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="notice">
+  <span>🖨️ <strong>Print at 100% / Actual size.</strong> Margins: <strong>None</strong>. Feed: <strong>Manual tray.</strong> Chrome's "Fit to printable area" WILL drift the form by several mm.</span>
+  <button id="btn-print-blank" class="secondary" type="button">Print blank (jam fallback)</button>
+</div>
+
+<header class="top">
+  <h1>UIDAI Form 1 (English) — Overlay Printer</h1>
+  <span class="sub">Page 1 only · no biometrics · nothing leaves this browser</span>
+</header>
+
+<div class="layout">
+
+  <!-- ============================= LEFT: DATA ENTRY ============================= -->
+  <div id="entry-pane">
+
+    <form id="entry-form" autocomplete="off">
+
+      <div class="panel">
+        <h2>1 · Purpose &amp; status</h2>
+        <div class="row">
+          <div class="field">
+            <label>Purpose</label>
+            <div class="choice-group">
+              <label><input type="radio" name="purpose" value="enrolment" data-adv> Enrolment</label>
+              <label><input type="radio" name="purpose" value="update" data-adv> Update</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Resident status</label>
+            <div class="choice-group">
+              <label><input type="radio" name="status" value="resident" data-adv> Resident Indian</label>
+              <label><input type="radio" name="status" value="nri" data-adv> NRI</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>3 · Applicant details</h2>
+
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label for="f-name">Full name (block capitals, no titles)</label>
+            <input type="text" id="f-name" data-uppercase data-adv>
+            <div id="name-warning" class="warning-line" hidden></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Gender</label>
+            <div class="choice-group">
+              <label><input type="radio" name="gender" value="female" data-adv> Female</label>
+              <label><input type="radio" name="gender" value="male" data-adv> Male</label>
+              <label><input type="radio" name="gender" value="third" data-adv> Third gender</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field narrow">
+            <label for="f-dob">DOB (DDMMYYYY)</label>
+            <input type="text" id="f-dob" inputmode="numeric" data-digits maxlength="8" placeholder="DDMMYYYY" data-adv>
+            <span id="dob-hint" class="hint mono"></span>
+          </div>
+          <div class="field narrow">
+            <label for="f-age">or Age (years)</label>
+            <input type="text" id="f-age" inputmode="numeric" data-digits maxlength="3" data-adv>
+          </div>
+          <div class="field">
+            <label>DOB basis</label>
+            <div class="choice-group">
+              <label><input type="radio" name="dobBasis" value="verified" data-adv> Verified</label>
+              <label><input type="radio" name="dobBasis" value="declared" data-adv> Declared</label>
+              <label><input type="radio" name="dobBasis" value="approximate" data-adv> Approximate</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="f-email">Email <span id="email-req" class="req" hidden>(mandatory for NRI)</span></label>
+            <input type="text" id="f-email" data-uppercase data-adv>
+          </div>
+          <div class="field">
+            <label for="f-mobile">Mobile</label>
+            <input type="text" id="f-mobile" inputmode="numeric" data-digits maxlength="10" data-adv>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>4 · Basis of enrolment</h2>
+        <div class="choice-group">
+          <label><input type="radio" name="basis" value="document" data-adv> Document verification</label>
+          <label><input type="radio" name="basis" value="hof" data-adv> Head of Family confirmation</label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>5 · Address</h2>
+        <div class="row">
+          <div class="field narrow">
+            <label for="f-house">House</label>
+            <input type="text" id="f-house" data-uppercase data-adv>
+          </div>
+          <div class="field">
+            <label for="f-street">Street / road</label>
+            <input type="text" id="f-street" data-uppercase data-adv>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f-landmark">Landmark</label>
+            <input type="text" id="f-landmark" data-uppercase data-adv>
+          </div>
+          <div class="field narrow">
+            <label for="f-ward">Ward no.</label>
+            <input type="text" id="f-ward" data-uppercase maxlength="4" data-adv>
+          </div>
+          <div class="field">
+            <label for="f-area">Area / locality</label>
+            <input type="text" id="f-area" data-uppercase data-adv>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f-village">Village / Town / City</label>
+            <input type="text" id="f-village" data-uppercase data-adv>
+          </div>
+          <div class="field">
+            <label for="f-post-office">Post office</label>
+            <input type="text" id="f-post-office" data-uppercase data-adv>
+          </div>
+          <div class="field narrow">
+            <label for="f-pin">PIN</label>
+            <input type="text" id="f-pin" inputmode="numeric" data-digits maxlength="6" data-adv>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f-subdistrict">Sub-district / Taluk</label>
+            <input type="text" id="f-subdistrict" data-uppercase data-adv>
+          </div>
+          <div class="field">
+            <label for="f-district">District</label>
+            <input type="text" id="f-district" data-uppercase data-adv>
+          </div>
+          <div class="field">
+            <label for="f-state">State</label>
+            <input type="text" id="f-state" data-uppercase data-adv>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f-poi">Proof of Identity (POI) document</label>
+            <input type="text" id="f-poi" data-uppercase data-adv>
+          </div>
+          <div class="field">
+            <label for="f-poa">Proof of Address (POA) document</label>
+            <input type="text" id="f-poa" data-uppercase data-adv>
+          </div>
+          <div class="field">
+            <label for="f-pdb">Proof of DOB (PDB) document</label>
+            <input type="text" id="f-pdb" data-uppercase data-adv>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>6 · Head of family</h2>
+        <div class="row">
+          <div class="field">
+            <label for="f-hof-name">HoF name</label>
+            <input type="text" id="f-hof-name" data-uppercase data-adv>
+          </div>
+          <div class="field">
+            <label for="f-hof-aadhaar">HoF Aadhaar (12 digits)</label>
+            <input type="text" id="f-hof-aadhaar" inputmode="numeric" data-digits data-aadhaar maxlength="12" data-adv>
+            <span id="hof-aadhaar-status" class="hint"></span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label>Relationship</label>
+            <div class="choice-group">
+              <label><input type="radio" name="relationship" value="mother" data-adv> Mother</label>
+              <label><input type="radio" name="relationship" value="father" data-adv> Father</label>
+              <label><input type="radio" name="relationship" value="guardian" data-adv> Guardian</label>
+              <label><input type="radio" name="relationship" value="spouse" data-adv> Spouse</label>
+              <label><input type="radio" name="relationship" value="child" data-adv> Child</label>
+              <label><input type="radio" name="relationship" value="sibling" data-adv> Sibling</label>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label for="f-por">Proof of Relationship (POR) document</label>
+            <input type="text" id="f-por" data-uppercase data-adv>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>7 · Applicant Aadhaar &amp; update fields</h2>
+        <div class="row">
+          <div class="field">
+            <label for="f-applicant-aadhaar">Applicant Aadhaar (12 digits, Update only)</label>
+            <input type="text" id="f-applicant-aadhaar" inputmode="numeric" data-digits data-aadhaar maxlength="12" data-adv>
+            <span id="applicant-aadhaar-status" class="hint"></span>
+            <div id="dup-warning" class="warning-line" hidden></div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label>Information to be updated</label>
+            <div class="choice-group">
+              <label><input type="checkbox" name="upd" value="biometric" data-adv> Biometric</label>
+              <label><input type="checkbox" name="upd" value="name" data-adv> Name</label>
+              <label><input type="checkbox" name="upd" value="dob" data-adv> DOB</label>
+              <label><input type="checkbox" name="upd" value="gender" data-adv> Gender</label>
+              <label><input type="checkbox" name="upd" value="address" data-adv> Address</label>
+              <label><input type="checkbox" name="upd" value="mobile" data-adv> Mobile</label>
+              <label><input type="checkbox" name="upd" value="email" data-adv> Email</label>
+              <label><input type="checkbox" name="upd" value="poiPoa" data-adv> POI/POA</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="btn-print-one">Print this record <span class="kbd">Ctrl+Enter</span></button>
+        <button type="button" id="btn-queue" class="secondary">Add to queue <span class="kbd">Ctrl+S</span></button>
+        <button type="button" id="btn-clear-form" class="secondary">Clear form</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ============================= RIGHT: CALIBRATION / PREVIEW / QUEUE ============================= -->
+  <div id="side-pane">
+
+    <div class="panel">
+      <h2>Printer calibration</h2>
+      <div class="row">
+        <div class="field">
+          <label for="cal-profile">Profile</label>
+          <select id="cal-profile"></select>
+        </div>
+        <div class="field narrow" style="justify-content:flex-end;flex-direction:row;gap:6px;display:flex;">
+          <button type="button" id="cal-new" class="secondary">New</button>
+          <button type="button" id="cal-delete" class="danger">Delete</button>
+        </div>
+      </div>
+      <div class="cal-grid">
+        <div class="field">
+          <label for="cal-dx">dx (mm)</label>
+          <input type="text" id="cal-dx" value="0">
+        </div>
+        <div class="field">
+          <label for="cal-dy">dy (mm)</label>
+          <input type="text" id="cal-dy" value="0">
+        </div>
+        <div class="field">
+          <label for="cal-scale">scale</label>
+          <input type="text" id="cal-scale" value="1">
+        </div>
+      </div>
+      <p class="hint">Print the alignment sheet, measure the crosshair and bar on paper, enter the measurements below, then Apply.</p>
+      <div class="cal-grid">
+        <div class="field">
+          <label for="meas-x">Crosshair X (mm)</label>
+          <input type="text" id="meas-x" placeholder="20.0">
+        </div>
+        <div class="field">
+          <label for="meas-y">Crosshair Y (mm)</label>
+          <input type="text" id="meas-y" placeholder="20.0">
+        </div>
+        <div class="field">
+          <label for="meas-bar">150mm bar reads (mm)</label>
+          <input type="text" id="meas-bar" placeholder="150.0">
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" id="cal-apply" class="secondary">Apply measurements</button>
+        <button type="button" id="btn-alignment-sheet">Print alignment sheet</button>
+      </div>
+      <p id="cal-storage-note" class="hint" hidden></p>
+    </div>
+
+    <div class="panel">
+      <h2>Live preview (mm-space)</h2>
+      <canvas id="preview-canvas" width="864" height="1118"></canvas>
+      <div id="pdf-preview-wrap">
+        <div class="actions">
+          <button type="button" id="btn-do-print">Print now</button>
+          <button type="button" id="btn-close-preview" class="secondary">Close preview</button>
+        </div>
+        <iframe id="pdf-preview-frame" title="PDF preview"></iframe>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Queue <span id="queue-count" class="badge ok">0</span></h2>
+      <div id="idle-banner"></div>
+      <ul id="queue-list" class="queue-list"></ul>
+      <div class="actions">
+        <button type="button" id="btn-print-queue">Print whole queue</button>
+        <button type="button" id="btn-wipe-queue" class="danger">Wipe queue</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="vendor/pdf-lib.min.js"></script>
+<script src="js/template-form1-en.js"></script>
+<script src="js/validation.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
