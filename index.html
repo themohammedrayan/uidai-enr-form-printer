@@ -51,8 +51,8 @@
         <div class="row">
           <div class="field" style="flex-basis:100%">
             <label for="f-name">Full name (block capitals, no titles)</label>
-            <input type="text" id="f-name" data-uppercase data-adv>
-            <div id="name-warning" class="warning-line" hidden></div>
+            <input type="text" id="f-name" data-adv>
+            <div id="name-warning" class="warning-line" data-warning-for="name" hidden></div>
           </div>
         </div>
 
@@ -70,12 +70,12 @@
         <div class="row">
           <div class="field narrow">
             <label for="f-dob">DOB (DDMMYYYY)</label>
-            <input type="text" id="f-dob" inputmode="numeric" data-digits maxlength="8" placeholder="DDMMYYYY" data-adv>
-            <span id="dob-hint" class="hint mono"></span>
+            <input type="text" id="f-dob" inputmode="numeric" maxlength="8" placeholder="DDMMYYYY" data-adv>
+            <span id="dob-hint" class="hint mono" data-hint-for="dob"></span>
           </div>
           <div class="field narrow">
             <label for="f-age">or Age (years)</label>
-            <input type="text" id="f-age" inputmode="numeric" data-digits maxlength="3" data-adv>
+            <input type="text" id="f-age" inputmode="numeric" maxlength="3" data-adv>
           </div>
           <div class="field">
             <label>DOB basis</label>
@@ -89,12 +89,12 @@
 
         <div class="row">
           <div class="field">
-            <label for="f-email">Email <span id="email-req" class="req" hidden>(mandatory for NRI)</span></label>
-            <input type="text" id="f-email" data-uppercase data-adv>
+            <label for="f-email">Email <span id="email-req" class="req" data-required-note-for="email" hidden>(mandatory for NRI)</span></label>
+            <input type="text" id="f-email" data-adv>
           </div>
           <div class="field">
             <label for="f-mobile">Mobile</label>
-            <input type="text" id="f-mobile" inputmode="numeric" data-digits maxlength="10" data-adv>
+            <input type="text" id="f-mobile" inputmode="numeric" maxlength="10" data-adv>
           </div>
         </div>
       </div>
@@ -112,67 +112,67 @@
         <div class="row">
           <div class="field narrow">
             <label for="f-house">House</label>
-            <input type="text" id="f-house" data-uppercase data-adv>
+            <input type="text" id="f-house" data-adv>
           </div>
           <div class="field">
             <label for="f-street">Street / road</label>
-            <input type="text" id="f-street" data-uppercase data-adv>
+            <input type="text" id="f-street" data-adv>
           </div>
         </div>
         <div class="row">
           <div class="field">
             <label for="f-landmark">Landmark</label>
-            <input type="text" id="f-landmark" data-uppercase data-adv>
+            <input type="text" id="f-landmark" data-adv>
           </div>
           <div class="field narrow">
             <label for="f-ward">Ward no.</label>
-            <input type="text" id="f-ward" data-uppercase maxlength="4" data-adv>
+            <input type="text" id="f-ward" maxlength="4" data-adv>
           </div>
           <div class="field">
             <label for="f-area">Area / locality</label>
-            <input type="text" id="f-area" data-uppercase data-adv>
+            <input type="text" id="f-area" data-adv>
           </div>
         </div>
         <div class="row">
           <div class="field">
             <label for="f-village">Village / Town / City</label>
-            <input type="text" id="f-village" data-uppercase data-adv>
+            <input type="text" id="f-village" data-adv>
           </div>
           <div class="field">
             <label for="f-post-office">Post office</label>
-            <input type="text" id="f-post-office" data-uppercase data-adv>
+            <input type="text" id="f-post-office" data-adv>
           </div>
           <div class="field narrow">
             <label for="f-pin">PIN</label>
-            <input type="text" id="f-pin" inputmode="numeric" data-digits maxlength="6" data-adv>
+            <input type="text" id="f-pin" inputmode="numeric" maxlength="6" data-adv>
           </div>
         </div>
         <div class="row">
           <div class="field">
             <label for="f-subdistrict">Sub-district / Taluk</label>
-            <input type="text" id="f-subdistrict" data-uppercase data-adv>
+            <input type="text" id="f-subdistrict" data-adv>
           </div>
           <div class="field">
             <label for="f-district">District</label>
-            <input type="text" id="f-district" data-uppercase data-adv>
+            <input type="text" id="f-district" data-adv>
           </div>
           <div class="field">
             <label for="f-state">State</label>
-            <input type="text" id="f-state" data-uppercase data-adv>
+            <input type="text" id="f-state" data-adv>
           </div>
         </div>
         <div class="row">
           <div class="field">
             <label for="f-poi">Proof of Identity (POI) document</label>
-            <input type="text" id="f-poi" data-uppercase data-adv>
+            <input type="text" id="f-poi" data-adv>
           </div>
           <div class="field">
             <label for="f-poa">Proof of Address (POA) document</label>
-            <input type="text" id="f-poa" data-uppercase data-adv>
+            <input type="text" id="f-poa" data-adv>
           </div>
           <div class="field">
             <label for="f-pdb">Proof of DOB (PDB) document</label>
-            <input type="text" id="f-pdb" data-uppercase data-adv>
+            <input type="text" id="f-pdb" data-adv>
           </div>
         </div>
       </div>
@@ -182,12 +182,12 @@
         <div class="row">
           <div class="field">
             <label for="f-hof-name">HoF name</label>
-            <input type="text" id="f-hof-name" data-uppercase data-adv>
+            <input type="text" id="f-hof-name" data-adv>
           </div>
           <div class="field">
             <label for="f-hof-aadhaar">HoF Aadhaar (12 digits)</label>
-            <input type="text" id="f-hof-aadhaar" inputmode="numeric" data-digits data-aadhaar maxlength="12" data-adv>
-            <span id="hof-aadhaar-status" class="hint"></span>
+            <input type="text" id="f-hof-aadhaar" inputmode="numeric" maxlength="12" data-adv>
+            <span id="hof-aadhaar-status" class="hint" data-status-for="hofAadhaar"></span>
           </div>
         </div>
         <div class="row">
@@ -206,7 +206,7 @@
         <div class="row">
           <div class="field" style="flex-basis:100%">
             <label for="f-por">Proof of Relationship (POR) document</label>
-            <input type="text" id="f-por" data-uppercase data-adv>
+            <input type="text" id="f-por" data-adv>
           </div>
         </div>
       </div>
@@ -216,9 +216,9 @@
         <div class="row">
           <div class="field">
             <label for="f-applicant-aadhaar">Applicant Aadhaar (12 digits, Update only)</label>
-            <input type="text" id="f-applicant-aadhaar" inputmode="numeric" data-digits data-aadhaar maxlength="12" data-adv>
-            <span id="applicant-aadhaar-status" class="hint"></span>
-            <div id="dup-warning" class="warning-line" hidden></div>
+            <input type="text" id="f-applicant-aadhaar" inputmode="numeric" maxlength="12" data-adv>
+            <span id="applicant-aadhaar-status" class="hint" data-status-for="applicantAadhaar"></span>
+            <div id="dup-warning" class="warning-line" data-dup-warning-for="applicantAadhaar" hidden></div>
           </div>
         </div>
         <div class="row">
@@ -326,6 +326,8 @@
 <script src="js/template-form1-en.js"></script>
 <script src="js/validation.js"></script>
 <script src="js/engine.js"></script>
+<script src="js/schema-runtime.js"></script>
+<script src="js/schema-form1-en.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
