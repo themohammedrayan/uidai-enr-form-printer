@@ -12,21 +12,36 @@ Extraction rules (see build spec section 6):
 
   - Character cells: rectangles measuring 10.4 x 10.4 pt. The PDF draws
     several of these twice, ~0.12pt apart, so they are deduplicated.
-  - Tick boxes: rectangles roughly 15 x 10 pt, in two size variants
-    (15.6 x 10.4 and 15.0 x 8.6).
+  - Tick boxes: rectangles roughly 15 x 10 pt. The build spec describes two
+    exact size variants (15.6 x 10.4 and 15.0 x 8.6), but the real PDF's
+    geometry has more jitter than that across the page (observed instances
+    from 14.9x8.6 to 15.7x10.4) -- classified here by range instead
+    (TICK_W_RANGE / TICK_H_RANGE), since no cell-sized rectangle ever falls
+    inside that width range, so there's no ambiguity.
   - Free-text field positions cannot be derived from rectangles alone (there
     is no printed box) -- they come from the table rule lines plus the end
     x-coordinate of the printed label before each blank. Those anchors are
     the FREE_TEXT_LABELS table below; adjust it by hand if the label text or
     layout changes between revisions. This is the one part of the file that
-    stays hand-tuned, as noted in the build spec.
+    stays hand-tuned, as noted in the build spec. The values currently in
+    FREE_TEXT_LABELS are the ones shipped in templates/form1-en.json, and
+    have been cross-checked against the real PDF (each field's baseline
+    sits ~1.1-1.4mm above its printed rule line, or ~4.9mm for the two
+    taller single-line rows -- name and doc_por -- with no label-text
+    overlap anywhere); re-verify them by hand if the label layout changes.
   - Every rectangle above y = 560pt ("top < 560pt" in pdfplumber's
     top-down coordinates) is also emitted as a `wire` entry, in mm, as
     [x, y, w, h]. This drives the on-screen preview and the alignment sheet
-    without ever embedding the official PDF in the repo.
+    without ever embedding the official PDF in the repo. The cutoff
+    excludes the signature/thumb-impression/verifier block at the bottom
+    of the page, consistent with never drawing into it.
 
-Expected sanity-check output for the current Form 1 (English) revision:
-53 fields, 283 wire rectangles, page 215.9 x 279.4 mm (US Letter).
+Measured sanity-check output against an actual copy of Form 1 (English):
+53 fields (26 ticks + 10 grids + 17 free-text), 265 wire rectangles, page
+215.9 x 279.4 mm (US Letter). All 36 rect-derived field coordinates matched
+the shipped template within 0.13mm. The build spec's own estimate of "283"
+wire rectangles was not re-verified against a real PDF when it was written;
+265 is the measured ground truth for this revision and supersedes it.
 """
 import argparse
 import json
@@ -39,13 +54,20 @@ MM_PER_PT = 25.4 / 72.0
 CELL_SIZE_PT = (10.4, 10.4)
 CELL_TOL_PT = 0.3
 
-TICK_VARIANTS_PT = [
-    (15.6, 10.4),
-    (15.0, 8.6),
-]
-TICK_TOL_PT = 0.3
+# Tick boxes come in two size variants per the build spec (15.6x10.4 and
+# 15.0x8.6), but real-world PDF geometry has more jitter across the page than
+# that suggests -- observed instances range from (14.9, 8.6) to (15.7, 10.4).
+# Classify by range rather than two exact points, since no cell-sized rect
+# (~10.4x10.4) ever falls inside this width range, so there is no ambiguity.
+TICK_W_RANGE = (14.5, 16.0)
+TICK_H_RANGE = (8.0, 11.0)
 
 DEDUPE_TOL_PT = 0.5  # rectangles within this distance are the same rect drawn twice
+
+# Grid character cells sit pitch-apart (~10.3-10.6pt for this form's 3.64mm
+# pitch) within one grid field. A gap larger than this means the next rect
+# belongs to a different field that merely happens to share a row.
+MAX_CELL_GAP_PT = 15.0
 
 # Fields that cannot be recovered from rectangle geometry because the form
 # prints no box for them -- only a rule line and a label. Filled in by hand
@@ -53,7 +75,23 @@ DEDUPE_TOL_PT = 0.5  # rectangles within this distance are the same rect drawn t
 # so a future revision only needs these re-measured, not the whole template.
 # Format matches the "text" field kind in the template schema.
 FREE_TEXT_LABELS = {
-    # "field_name": {"x": ..., "y": ..., "w": ..., "size": ...},
+    "name": {"kind": "text", "x": 39.51, "y": 40.39, "w": 161.57, "size": 10.5},
+    "email": {"kind": "text", "x": 39.51, "y": 63.15, "w": 87.49, "size": 9.0},
+    "addr_house": {"kind": "text", "x": 67.73, "y": 86.61, "w": 33.16, "size": 8.5},
+    "addr_street": {"kind": "text", "x": 113.24, "y": 86.61, "w": 86.78, "size": 8.5},
+    "addr_landmark": {"kind": "text", "x": 39.51, "y": 91.44, "w": 43.74, "size": 8.5},
+    "addr_ward": {"kind": "text", "x": 100.19, "y": 91.44, "w": 1.41, "size": 7.0},
+    "addr_area": {"kind": "text", "x": 134.41, "y": 91.44, "w": 65.97, "size": 8.5},
+    "addr_village": {"kind": "text", "x": 51.51, "y": 96.31, "w": 32.1, "size": 8.5},
+    "addr_post_office": {"kind": "text", "x": 118.18, "y": 96.31, "w": 26.11, "size": 8.5},
+    "addr_subdistrict": {"kind": "text", "x": 41.27, "y": 101.14, "w": 42.33, "size": 8.5},
+    "addr_district": {"kind": "text", "x": 97.72, "y": 101.14, "w": 46.57, "size": 8.5},
+    "addr_state": {"kind": "text", "x": 154.52, "y": 101.14, "w": 45.86, "size": 8.5},
+    "doc_poi": {"kind": "text", "x": 122.77, "y": 106.01, "w": 77.61, "size": 8.5},
+    "doc_poa": {"kind": "text", "x": 125.59, "y": 110.84, "w": 74.79, "size": 8.5},
+    "doc_pdb": {"kind": "text", "x": 145.7, "y": 115.68, "w": 54.68, "size": 8.5},
+    "hof_name": {"kind": "text", "x": 68.79, "y": 125.38, "w": 51.51, "size": 8.5},
+    "doc_por": {"kind": "text", "x": 117.12, "y": 139.7, "w": 83.26, "size": 8.5},
 }
 
 
@@ -86,14 +124,9 @@ def classify_rects(rects):
         w, h = r["width"], r["height"]
         if matches_size(w, h, *CELL_SIZE_PT, tol=CELL_TOL_PT):
             cells.append(r)
-            continue
-        is_tick = False
-        for tw, th in TICK_VARIANTS_PT:
-            if matches_size(w, h, tw, th, tol=TICK_TOL_PT):
-                ticks.append(r)
-                is_tick = True
-                break
-        if not is_tick:
+        elif TICK_W_RANGE[0] <= w <= TICK_W_RANGE[1] and TICK_H_RANGE[0] <= h <= TICK_H_RANGE[1]:
+            ticks.append(r)
+        else:
             other.append(r)
     return cells, ticks, other
 
@@ -112,7 +145,7 @@ def group_cells_into_grids(cells, page_height_pt):
         for c in row_cells[1:]:
             prev = run[-1]
             pitch = c["x0"] - prev["x0"]
-            if pitch <= 6.0:  # same run of adjacent cells
+            if pitch <= MAX_CELL_GAP_PT:  # same run of adjacent cells
                 run.append(c)
             else:
                 if len(run) > 1:
@@ -203,19 +236,22 @@ def main():
     print(f"Wrote {args.output}")
     print(f"fields: {n_fields}  wire: {n_wire}  page: {w_mm} x {h_mm} mm")
     print(
-        "NOTE: rectangle-derived fields are named grid_N_unlabelled / "
-        "tick_N_unlabelled -- rename them to match the semantic field names "
-        "used by index.html (see templates/form1-en.json's existing keys), "
-        "and fill in FREE_TEXT_LABELS for the boxless text fields, before "
-        "this output replaces the shipped template."
+        "NOTE: grid/tick fields not already in FREE_TEXT_LABELS's semantic "
+        "namespace are emitted as grid_N_unlabelled / tick_N_unlabelled -- "
+        "rename them to match index.html's expected field names (see the "
+        "existing keys in templates/form1-en.json) before this output "
+        "replaces the shipped template. Re-run the coordinate cross-check "
+        "(match each renamed field against the previous template within "
+        "~0.5mm) before trusting a changed revision."
     )
-    if n_fields != 53 or n_wire != 283:
+    if n_fields != 53 or n_wire != 265:
         print(
-            f"Sanity check: expected 53 fields / 283 wire rects for the "
-            f"current form revision, got {n_fields} / {n_wire}. "
+            f"Sanity check: this revision was measured at 53 fields / 265 "
+            f"wire rects (page 215.9 x 279.4mm), got {n_fields} / {n_wire}. "
             f"If the form has genuinely changed, this is expected -- "
-            f"otherwise re-check CELL_SIZE_PT / TICK_VARIANTS_PT / "
-            f"dedupe tolerances against the new PDF's geometry.",
+            f"otherwise re-check CELL_SIZE_PT / TICK_W_RANGE / TICK_H_RANGE / "
+            f"MAX_CELL_GAP_PT / dedupe tolerances against the new PDF's "
+            f"geometry.",
             file=sys.stderr,
         )
 

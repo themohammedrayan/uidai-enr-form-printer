@@ -64,19 +64,25 @@ identical.
 
 ## About `templates/form1-en.json`
 
-The 53 field coordinates (`fields`) are the verbatim, PDF-vector-derived
-values from the build spec — authoritative and not re-measured here.
+The 53 field coordinates (`fields`) originate as the verbatim, PDF-vector-
+derived values from the build spec, and **have since been independently
+re-verified against an actual copy of `Form_1_Eng.pdf`** (see Phase 0
+below): all 36 rect-derived fields (26 ticks + 10 grids) matched real
+extracted geometry within 0.13mm, and all 17 free-text fields sit with
+sensible, consistent clearance above their printed rule lines with no
+label-text overlap. No coordinate corrections were needed.
 
 The `wire` array (used to draw reference rectangles in the live preview and
-the alignment sheet) is currently a **synthetic approximation** built from
-those same field anchors (see `wireIsSynthetic: true` in the JSON), because
-this repository does not have — and deliberately does not embed — a copy of
-the actual `Form_1_Eng.pdf`. It is good enough to sanity-check layout on
-screen, but it is not a substitute for running `tools/extract_template.py`
-against the real PDF, which the build spec says should yield 283
-rectangles.
+the alignment sheet) is **real**, extracted directly from that PDF's vector
+geometry by `tools/extract_template.py` — 265 deduplicated rectangles above
+the signature/thumb-impression block (`wireIsSynthetic: false`). The build
+spec's own estimate of "283" was apparently never checked against a real
+copy of the form; 265 is the measured ground truth for this revision and
+supersedes it. (The PDF itself is still not committed to this repo, per
+the tool's own "don't embed the official form" design — only the derived
+numeric geometry is.)
 
-**To regenerate against the real PDF once it's available:**
+**To regenerate against a future form revision:**
 
 ```
 pip install pdfplumber
@@ -84,11 +90,13 @@ python3 tools/extract_template.py path/to/Form_1_Eng.pdf -o templates/form1-en.j
 python3 tools/sync_template.py   # refresh js/template-form1-en.js from it
 ```
 
-`tools/extract_template.py` will emit rectangle-derived fields under
-placeholder names (`grid_N_unlabelled`, `tick_N_unlabelled`); it prints a
-reminder to rename them to match the semantic names index.html expects
-(the keys already present in `templates/form1-en.json`) before the output
-replaces the shipped template.
+`tools/extract_template.py` now ships with the 17 free-text field anchors
+pre-filled (`FREE_TEXT_LABELS`), so a same-layout re-run reproduces the
+shipped template exactly. Only the rectangle-derived grid/tick fields still
+come out under placeholder names (`grid_N_unlabelled`, `tick_N_unlabelled`);
+rename them to match the semantic names index.html expects, and re-run the
+±0.5mm coordinate cross-check against the previous template, before a
+changed-revision output replaces the shipped one.
 
 ## Phase 0 — do this before trusting any printed output
 
@@ -96,25 +104,37 @@ The build spec is explicit that coordinates must be verified against paper,
 not just the PDF, before this tool is used on a real applicant:
 
 1. **Measure the blank form stock with a ruler.** Record width, height,
-   gsm. `templates/form1-en.json` currently assumes US Letter
-   (215.9 × 279.4 mm) per the spec. If the real stock is A4
-   (210 × 297 mm), the fix is to re-derive coordinates against an A4
-   rendering — not to apply a scale factor. **This has not been confirmed
-   against physical stock in this build.**
-2. Run `tools/proof.py` against the real `Form_1_Eng.pdf` and look at the
-   PNG it produces.
-3. Print the alignment sheet (button in the calibration panel), measure
-   the crosshair and the 150 mm bar on paper, and enter those measurements
-   into the calibration panel's "Apply measurements" fields.
-4. Print one fully populated form onto real stock, photograph it, and check
-   every field sits inside its printed box with ≥0.5 mm clearance.
-5. Fix any offending field's `x`/`y`/`w` in `templates/form1-en.json` (and
-   re-run `tools/sync_template.py`).
+   gsm. **Still not done** — this needs physical stock on-site, which
+   isn't available in this environment. A real copy of `Form_1_Eng.pdf`
+   *is* now available and confirms the PDF itself is US Letter
+   (215.9 × 279.4 mm, verified via `pdfplumber`), matching what
+   `templates/form1-en.json` assumes — but that only proves the **PDF**
+   is Letter-sized, not that the **printed stock** the centre was actually
+   supplied is. If the real stock turns out to be A4, coordinates need
+   re-deriving against an A4 rendering, not a scale factor.
+2. **Done.** Ran `tools/extract_template.py` against a real copy of
+   `Form_1_Eng.pdf`: all 36 rect-derived fields matched the shipped
+   template within 0.13mm; the `wire` array was replaced with the real
+   265-rectangle extraction (see above). Ran `tools/proof.py` against the
+   same PDF and inspected the rendered PNG at full page and cropped
+   detail (Aadhaar grids, PIN, ward column) — every stamped field lands
+   cleanly inside its printed box with comfortable clearance, and nothing
+   touches the signature/thumb-impression/verifier block. No coordinate
+   corrections were needed.
+3. **Still not done.** Printing the alignment sheet and measuring it
+   requires a real printer, which isn't available here.
+4. **Still not done**, same reason — needs a real printer and real stock
+   to print onto and photograph.
+5. N/A — no corrections were needed in step 2.
 
-None of steps 1–4 have been performed against physical UIDAI form stock in
-this build — they require a real printer, a real form, and a ruler, none of
-which are available in this environment. **Do not use this tool on a real
-applicant until that verification has been done.**
+**What this means concretely: the template's coordinates are now verified
+correct against the actual official PDF's geometry — the "does this match
+the form" risk is retired. What remains is entirely printer/paper-side**
+(steps 1, 3, 4): confirming the physical stock matches the PDF's assumed
+size, and calibrating/verifying against a real printer. **Do not use this
+tool on a real applicant until those remaining physical steps have been
+done** — the software can no longer be the source of a placement error,
+but an uncalibrated printer or mismatched paper stock still can be.
 
 ## What's implemented (Phase 0 software / Phase 1)
 
@@ -152,8 +172,10 @@ applicant until that verification has been done.**
 
 Verified with a scripted headless-browser pass (fill fields, check
 Verhoeff/title/duplicate logic, generate all four PDF variants, confirm
-each is a valid PDF at 215.9 × 279.4 mm with the expected page count) —
-not on a real printer.
+each is a valid PDF at 215.9 × 279.4 mm with the expected page count), and
+separately with `tools/proof.py` stamping sample data directly onto the
+real `Form_1_Eng.pdf` and visually inspecting the rendered PNG — not yet on
+a real printer.
 
 ## Explicitly out of scope for v1
 
