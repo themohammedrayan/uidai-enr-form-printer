@@ -3,26 +3,65 @@
 
   var Engine = window.FormEngine;
   var Runtime = window.SchemaRuntime;
-  var SCHEMA = window.SCHEMA_FORM1_EN;
-  var TEMPLATE = window[SCHEMA.templateGlobal];
 
-  var queue = [];
+  var REGISTRY = {
+    "form1-en": { schema: window.SCHEMA_FORM1_EN, template: window.FORM1_EN_TEMPLATE, label: "Form 1" },
+    "form3-en": { schema: window.SCHEMA_FORM3_EN, template: window.FORM3_EN_TEMPLATE, label: "Form 3" },
+    "form5-en": { schema: window.SCHEMA_FORM5_EN, template: window.FORM5_EN_TEMPLATE, label: "Form 5" },
+  };
+  var DEFAULT_FORM_ID = "form1-en";
+
+  var queue = []; // [{id, formId, record}], shared across all three forms
+  var recordsByForm = {}; // formId -> record, preserves in-progress state across tab switches
   var currentPreviewUrl = null;
   var STOPS = [];
 
-  // Shared mutable state the schema runtime reads/writes. `record` starts
-  // as a schema-shaped empty record; `fontsMetrics` is filled in once the
-  // async pdf-lib font metrics finish loading.
+  // Shared mutable state the schema runtime reads/writes. `record`/
+  // `template`/`schema`/`formRoot` always describe the CURRENTLY ACTIVE
+  // form -- switchForm() swaps them. Bound input handlers close over this
+  // one ctx, which is safe because only the active form's inputs are
+  // visible/focusable at any moment.
   var ctx = {
-    record: Runtime.makeEmptyRecord(SCHEMA),
+    activeFormId: null,
+    registry: REGISTRY,
+    record: null,
     queue: queue,
     lastPlan: [],
-    template: TEMPLATE,
+    template: null,
+    schema: null,
+    formRoot: null,
     fontsMetrics: null,
     canvasId: "preview-canvas",
-    drawPreview: function () { Runtime.drawPreview(SCHEMA, ctx); },
+    drawPreview: function () { Runtime.drawPreview(ctx.schema, ctx); },
     touchActivity: function () { touchActivity(); },
   };
+
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function switchForm(formId) {
+    if (ctx.activeFormId) recordsByForm[ctx.activeFormId] = ctx.record;
+
+    ctx.activeFormId = formId;
+    ctx.template = REGISTRY[formId].template;
+    ctx.schema = REGISTRY[formId].schema;
+    ctx.formRoot = document.getElementById("entry-form-" + formId);
+    ctx.record = recordsByForm[formId] || Runtime.makeEmptyRecord(ctx.schema);
+
+    document.querySelectorAll(".entry-form").forEach(function (f) {
+      f.hidden = f.dataset.formId !== formId;
+    });
+    document.querySelectorAll(".form-tab").forEach(function (t) {
+      var active = t.dataset.formId === formId;
+      t.classList.toggle("active", active);
+      t.setAttribute("aria-selected", active ? "true" : "false");
+    });
+
+    Runtime.sizeCanvasToTemplate(document.getElementById("preview-canvas"), ctx.template);
+    STOPS = buildStops();
+    Runtime.applyRecordToForm(ctx.schema, ctx.record, ctx);
+  }
 
   // ---- PDF export ---------------------------------------------------------
 
@@ -35,23 +74,24 @@
   }
 
   async function generateSingleRecordPdf(rec) {
-    var fieldValues = Runtime.recordToFieldValues(SCHEMA, rec);
-    return Engine.generateSingleRecordPdf(TEMPLATE, fieldValues, getCurrentCalibration(), ctx.fontsMetrics);
+    var fieldValues = Runtime.recordToFieldValues(ctx.schema, rec);
+    return Engine.generateSingleRecordPdf(ctx.template, fieldValues, getCurrentCalibration(), ctx.fontsMetrics);
   }
 
-  async function generateQueuePdf(records) {
-    var entries = records.map(function (rec) {
-      return { template: TEMPLATE, fieldValues: Runtime.recordToFieldValues(SCHEMA, rec) };
+  async function generateQueuePdf() {
+    var entries = queue.map(function (entry) {
+      var reg = REGISTRY[entry.formId];
+      return { template: reg.template, fieldValues: Runtime.recordToFieldValues(reg.schema, entry.record) };
     });
     return Engine.generateQueuePdf(entries, getCurrentCalibration(), ctx.fontsMetrics);
   }
 
   async function generateBlankPdf() {
-    return Engine.generateBlankPdf(TEMPLATE);
+    return Engine.generateBlankPdf(ctx.template);
   }
 
   async function generateAlignmentSheetPdf() {
-    return Engine.generateAlignmentSheetPdf(TEMPLATE, getCurrentCalibration());
+    return Engine.generateAlignmentSheetPdf(ctx.template, getCurrentCalibration());
   }
 
   // ---- PDF preview / print -----------------------------------------------
@@ -81,16 +121,16 @@
   // ---- queue --------------------------------------------------------------
 
   function addToQueue() {
-    queue.push(JSON.parse(JSON.stringify(ctx.record)));
+    queue.push({ id: uid(), formId: ctx.activeFormId, record: JSON.parse(JSON.stringify(ctx.record)) });
     renderQueue();
-    Runtime.resetForm(SCHEMA, ctx);
+    Runtime.resetForm(ctx.schema, ctx);
   }
 
   function renderQueue() {
     var ul = document.getElementById("queue-list");
-    Runtime.renderQueueList(SCHEMA, queue, ul, {
-      onReuse: function (rec) { Runtime.reuseAddress(SCHEMA, rec, ctx); },
-      onRemove: function (rec, idx) {
+    Runtime.renderQueueList(REGISTRY, queue, ul, {
+      onReuse: function (entry) { Runtime.reuseAddress(ctx.schema, entry.record, ctx); },
+      onRemove: function (entry, idx) {
         queue.splice(idx, 1);
         renderQueue();
       },
@@ -126,7 +166,8 @@
 
   function wipeAll() {
     wipeQueue();
-    Runtime.resetForm(SCHEMA, ctx);
+    recordsByForm = {};
+    Runtime.resetForm(ctx.schema, ctx);
     hideIdleBanner();
     lastActivity = Date.now();
   }
@@ -219,7 +260,7 @@
   function buildStops() {
     var stops = [];
     var seenNames = {};
-    document.querySelectorAll("#entry-form [data-adv]").forEach(function (el) {
+    ctx.formRoot.querySelectorAll("[data-adv]").forEach(function (el) {
       if (el.type === "radio" || el.type === "checkbox") {
         if (seenNames[el.name]) return;
         seenNames[el.name] = true;
@@ -244,18 +285,16 @@
   function onGlobalShortcuts(e) {
     if (e.ctrlKey && e.key === "Enter") {
       e.preventDefault();
-      document.getElementById("btn-print-one").click();
+      ctx.formRoot.querySelector(".btn-print-one").click();
     } else if (e.ctrlKey && (e.key === "s" || e.key === "S")) {
       e.preventDefault();
-      document.getElementById("btn-queue").click();
+      ctx.formRoot.querySelector(".btn-queue").click();
     }
   }
 
   // ---- init -----------------------------------------------------------------
 
   document.addEventListener("DOMContentLoaded", function () {
-    Runtime.sizeCanvasToTemplate(document.getElementById("preview-canvas"), TEMPLATE);
-
     populateProfileSelect();
     if (!calStorageAvailable) {
       var note = document.getElementById("cal-storage-note");
@@ -307,11 +346,28 @@
       showPdfPreview(await generateAlignmentSheetPdf());
     });
 
-    Runtime.bindAllInputs(SCHEMA, ctx);
-
-    document.getElementById("btn-print-one").addEventListener("click", async function () {
-      showPdfPreview(await generateSingleRecordPdf(ctx.record));
+    Object.keys(REGISTRY).forEach(function (formId) {
+      Runtime.bindAllInputs(REGISTRY[formId].schema, ctx);
     });
+
+    document.querySelectorAll(".form-tab").forEach(function (tab) {
+      tab.addEventListener("click", function () { switchForm(tab.dataset.formId); });
+    });
+
+    document.querySelectorAll(".btn-print-one").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        showPdfPreview(await generateSingleRecordPdf(ctx.record));
+      });
+    });
+    document.querySelectorAll(".btn-queue").forEach(function (btn) {
+      btn.addEventListener("click", function () { addToQueue(); });
+    });
+    document.querySelectorAll(".btn-clear-form").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (confirm("Clear the current form?")) Runtime.resetForm(ctx.schema, ctx);
+      });
+    });
+
     document.getElementById("btn-print-blank").addEventListener("click", async function () {
       showPdfPreview(await generateBlankPdf());
     });
@@ -320,11 +376,7 @@
         alert("Queue is empty.");
         return;
       }
-      showPdfPreview(await generateQueuePdf(queue));
-    });
-    document.getElementById("btn-queue").addEventListener("click", function () { addToQueue(); });
-    document.getElementById("btn-clear-form").addEventListener("click", function () {
-      if (confirm("Clear the current form?")) Runtime.resetForm(SCHEMA, ctx);
+      showPdfPreview(await generateQueuePdf());
     });
     document.getElementById("btn-wipe-queue").addEventListener("click", function () {
       if (confirm("Wipe the whole queue? This cannot be undone.")) wipeQueue();
@@ -332,18 +384,19 @@
     document.getElementById("btn-do-print").addEventListener("click", doPrintNow);
     document.getElementById("btn-close-preview").addEventListener("click", closePreview);
 
-    STOPS = buildStops();
-    document.getElementById("entry-form").addEventListener("keydown", onEnterAdvance);
+    document.getElementById("entry-pane").addEventListener("keydown", onEnterAdvance);
     document.addEventListener("keydown", onGlobalShortcuts);
     document.addEventListener("keydown", touchActivity, true);
     document.addEventListener("mousedown", touchActivity, true);
 
+    switchForm(DEFAULT_FORM_ID);
     renderQueue();
-    ctx.drawPreview();
 
     Engine.initFontsMetrics().then(function (fonts) {
       ctx.fontsMetrics = fonts;
-      Runtime.applyComputedMaxLengths(SCHEMA, TEMPLATE, fonts);
+      Object.keys(REGISTRY).forEach(function (formId) {
+        Runtime.applyComputedMaxLengths(REGISTRY[formId].schema, REGISTRY[formId].template, fonts);
+      });
       ctx.drawPreview();
     });
   });

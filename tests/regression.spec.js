@@ -114,7 +114,7 @@ test.describe('queue and family batching', () => {
   test('add to queue resets the form and focuses name', async ({ page }) => {
     await gotoApp(page);
     await fillFullRecord(page);
-    await page.click('#btn-queue');
+    await page.click('.entry-form:not([hidden]) .btn-queue');
     await page.waitForTimeout(200);
 
     await expect(page.locator('#queue-count')).toHaveText('1');
@@ -126,7 +126,7 @@ test.describe('queue and family batching', () => {
   test('warns on duplicate Aadhaar already in queue', async ({ page }) => {
     await gotoApp(page);
     await fillFullRecord(page);
-    await page.click('#btn-queue');
+    await page.click('.entry-form:not([hidden]) .btn-queue');
     await page.waitForTimeout(200);
 
     await page.fill('#f-applicant-aadhaar', VALID_AADHAAR);
@@ -136,7 +136,7 @@ test.describe('queue and family batching', () => {
   test('reuse address seeds address/POA/HoF but not name or Aadhaar', async ({ page }) => {
     await gotoApp(page);
     await fillFullRecord(page);
-    await page.click('#btn-queue');
+    await page.click('.entry-form:not([hidden]) .btn-queue');
     await page.waitForTimeout(200);
 
     await page.click('#queue-list button.secondary'); // first "Reuse address" button
@@ -200,7 +200,7 @@ test.describe('PDF export', () => {
   test('single record produces a valid, correctly sized one-page PDF', async ({ page }) => {
     await gotoApp(page);
     await fillFullRecord(page);
-    await page.click('#btn-print-one');
+    await page.click('.entry-form:not([hidden]) .btn-print-one');
     await page.waitForTimeout(600);
 
     const bytes = await pdfBytesFromPreview(page);
@@ -214,11 +214,11 @@ test.describe('PDF export', () => {
   test('whole queue produces one page per record', async ({ page }) => {
     await gotoApp(page);
     await fillFullRecord(page);
-    await page.click('#btn-queue');
+    await page.click('.entry-form:not([hidden]) .btn-queue');
     await page.waitForTimeout(200);
     await page.fill('#f-name', 'second person');
     await page.fill('#f-applicant-aadhaar', '000000000000');
-    await page.click('#btn-queue');
+    await page.click('.entry-form:not([hidden]) .btn-queue');
     await page.waitForTimeout(200);
 
     await page.click('#btn-print-queue');

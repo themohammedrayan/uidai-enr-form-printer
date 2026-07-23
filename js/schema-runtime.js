@@ -87,10 +87,11 @@
   // ---- role-driven cross-cutting validation UI -------------------------------
 
   function updateRoleHooks(schema, rec, ctx) {
+    var root = ctx.formRoot || document;
     schema.fields.forEach(function (f) {
       if (f.role === "dob") {
         var dobVal = getPath(rec, f.path) || "";
-        var hintEl = document.querySelector('[data-hint-for="' + f.id + '"]');
+        var hintEl = root.querySelector('[data-hint-for="' + f.id + '"]');
         if (hintEl) {
           hintEl.textContent = dobVal.length === 8
             ? "→ " + dobVal.slice(0, 2) + "/" + dobVal.slice(2, 4) + "/" + dobVal.slice(4, 8)
@@ -100,7 +101,7 @@
 
       if (f.role === "aadhaar") {
         var aVal = getPath(rec, f.path) || "";
-        var statusEl = document.querySelector('[data-status-for="' + f.id + '"]');
+        var statusEl = root.querySelector('[data-status-for="' + f.id + '"]');
         if (statusEl) {
           if (aVal.length < 12) {
             statusEl.textContent = (12 - aVal.length) + " digit(s) remaining";
@@ -112,11 +113,16 @@
           }
         }
         if (f.dupCheck) {
-          var dupEl = document.querySelector('[data-dup-warning-for="' + f.id + '"]');
+          var dupEl = root.querySelector('[data-dup-warning-for="' + f.id + '"]');
           if (dupEl) {
-            var aadhaarPaths = (schema.recordShape && schema.recordShape.aadhaarPaths) || [];
-            var dup = aVal.length === 12 && (ctx.queue || []).some(function (queuedRec) {
-              return aadhaarPaths.some(function (p) { return getPath(queuedRec, p) === aVal; });
+            // Each queue entry may belong to a different form/schema (e.g. a
+            // mixed Form 1 + Form 5 queue) -- resolve each entry's own
+            // aadhaarPaths via ctx.registry rather than assuming they all
+            // share the current schema's paths.
+            var dup = aVal.length === 12 && (ctx.queue || []).some(function (entry) {
+              var entrySchema = (ctx.registry && ctx.registry[entry.formId] && ctx.registry[entry.formId].schema) || schema;
+              var paths = (entrySchema.recordShape && entrySchema.recordShape.aadhaarPaths) || [];
+              return paths.some(function (p) { return getPath(entry.record, p) === aVal; });
             });
             dupEl.hidden = !dup;
             if (dup) dupEl.textContent = "This Aadhaar number is already in the queue.";
@@ -126,7 +132,7 @@
 
       if (f.role === "name") {
         var nameVal = getPath(rec, f.path) || "";
-        var warnEl = document.querySelector('[data-warning-for="' + f.id + '"]');
+        var warnEl = root.querySelector('[data-warning-for="' + f.id + '"]');
         if (warnEl) {
           var msgs = [];
           var title = global.Validation.detectTitles(nameVal);
@@ -147,7 +153,7 @@
       }
 
       if (f.requiredWhen) {
-        var reqEl = document.querySelector('[data-required-note-for="' + f.id + '"]');
+        var reqEl = root.querySelector('[data-required-note-for="' + f.id + '"]');
         if (reqEl) reqEl.hidden = getPath(rec, f.requiredWhen.path) !== f.requiredWhen.equals;
       }
     });
@@ -289,14 +295,20 @@
     return value || "—";
   }
 
-  function renderQueueList(schema, queue, ulElement, handlers) {
+  // `queue` entries are {id, formId, record}; `registry` maps formId ->
+  // {schema, template, label}, so a queue mixing entries from different
+  // forms renders each one using its own schema's summary fields.
+  function renderQueueList(registry, queue, ulElement, handlers) {
     ulElement.innerHTML = "";
-    queue.forEach(function (rec, idx) {
+    queue.forEach(function (entry, idx) {
+      var schema = registry[entry.formId].schema;
+      var rec = entry.record;
       var li = document.createElement("li");
       var who = document.createElement("div");
       who.className = "who";
       var strong = document.createElement("strong");
-      strong.textContent = getPath(rec, schema.summary.namePath) || "(no name)";
+      var label = registry[entry.formId].label || schema.id;
+      strong.textContent = (getPath(rec, schema.summary.namePath) || "(no name)") + " — " + label;
       var small = document.createElement("small");
       var aadhaarVal = getPath(rec, schema.summary.aadhaarPath) || "";
       var aadhaarTail = aadhaarVal ? "•••• •••• " + aadhaarVal.slice(8) : "—";
@@ -312,12 +324,12 @@
       btnReuse.type = "button";
       btnReuse.className = "secondary";
       btnReuse.textContent = "Reuse address";
-      btnReuse.addEventListener("click", function () { handlers.onReuse(rec, idx); });
+      btnReuse.addEventListener("click", function () { handlers.onReuse(entry, idx); });
       var btnRemove = document.createElement("button");
       btnRemove.type = "button";
       btnRemove.className = "danger";
       btnRemove.textContent = "Remove";
-      btnRemove.addEventListener("click", function () { handlers.onRemove(rec, idx); });
+      btnRemove.addEventListener("click", function () { handlers.onRemove(entry, idx); });
       btnWrap.appendChild(btnReuse);
       btnWrap.appendChild(btnRemove);
 
@@ -344,5 +356,6 @@
     resetForm: resetForm,
     reuseAddress: reuseAddress,
     renderQueueList: renderQueueList,
+    summaryText: summaryText,
   };
 })(window);

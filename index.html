@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UIDAI Form 1 Overlay Printer</title>
+<title>UIDAI Overlay Printer</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -14,16 +14,22 @@
 </div>
 
 <header class="top">
-  <h1>UIDAI Form 1 (English) — Overlay Printer</h1>
+  <h1>UIDAI Overlay Printer</h1>
   <span class="sub">Page 1 only · no biometrics · nothing leaves this browser</span>
 </header>
+
+<div class="form-switcher" role="tablist">
+  <button type="button" class="form-tab active" data-form-id="form1-en" role="tab" aria-selected="true">Form 1 <small>Adult</small></button>
+  <button type="button" class="form-tab" data-form-id="form3-en" role="tab" aria-selected="false">Form 3 <small>Child 5&ndash;18</small></button>
+  <button type="button" class="form-tab" data-form-id="form5-en" role="tab" aria-selected="false">Form 5 <small>Child &lt;5</small></button>
+</div>
 
 <div class="layout">
 
   <!-- ============================= LEFT: DATA ENTRY ============================= -->
   <div id="entry-pane">
 
-    <form id="entry-form" autocomplete="off">
+    <form id="entry-form-form1-en" class="entry-form" data-form-id="form1-en" autocomplete="off">
 
       <div class="panel">
         <h2>1 · Purpose &amp; status</h2>
@@ -239,9 +245,478 @@
       </div>
 
       <div class="actions">
-        <button type="button" id="btn-print-one">Print this record <span class="kbd">Ctrl+Enter</span></button>
-        <button type="button" id="btn-queue" class="secondary">Add to queue <span class="kbd">Ctrl+S</span></button>
-        <button type="button" id="btn-clear-form" class="secondary">Clear form</button>
+        <button type="button" class="btn-print-one">Print this record <span class="kbd">Ctrl+Enter</span></button>
+        <button type="button" class="btn-queue secondary">Add to queue <span class="kbd">Ctrl+S</span></button>
+        <button type="button" class="btn-clear-form secondary">Clear form</button>
+      </div>
+    </form>
+
+    <form id="entry-form-form3-en" class="entry-form" data-form-id="form3-en" autocomplete="off" hidden>
+
+      <div class="panel">
+        <h2>1 · Purpose &amp; status</h2>
+        <div class="row">
+          <div class="field">
+            <label>Purpose</label>
+            <div class="choice-group">
+              <label><input type="radio" name="f3-purpose" value="enrolment" data-adv> Enrolment</label>
+              <label><input type="radio" name="f3-purpose" value="update" data-adv> Update</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Resident status</label>
+            <div class="choice-group">
+              <label><input type="radio" name="f3-status" value="resident" data-adv> Resident Indian</label>
+              <label><input type="radio" name="f3-status" value="nri" data-adv> NRI</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>3 · Demographic information</h2>
+
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label for="f3-name">Child's full name (block capitals, no titles)</label>
+            <input type="text" id="f3-name" data-adv>
+            <div class="warning-line" data-warning-for="name" hidden></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Gender</label>
+            <div class="choice-group">
+              <label><input type="radio" name="f3-gender" value="female" data-adv> Female</label>
+              <label><input type="radio" name="f3-gender" value="male" data-adv> Male</label>
+              <label><input type="radio" name="f3-gender" value="third" data-adv> Third gender</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field narrow">
+            <label for="f3-dob">DOB (DDMMYYYY)</label>
+            <input type="text" id="f3-dob" inputmode="numeric" maxlength="8" placeholder="DDMMYYYY" data-adv>
+            <span class="hint mono" data-hint-for="dob"></span>
+          </div>
+          <div class="field narrow">
+            <label for="f3-age">or Age (years)</label>
+            <input type="text" id="f3-age" inputmode="numeric" maxlength="3" data-adv>
+          </div>
+          <div class="field">
+            <label>DOB basis</label>
+            <div class="choice-group">
+              <label><input type="radio" name="f3-dobBasis" value="verified" data-adv> Verified</label>
+              <label><input type="radio" name="f3-dobBasis" value="declared" data-adv> Declared</label>
+              <label><input type="radio" name="f3-dobBasis" value="approximate" data-adv> Approximate</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="f3-email">Email <span class="req" data-required-note-for="email" hidden>(mandatory for NRI)</span></label>
+            <input type="text" id="f3-email" data-adv>
+          </div>
+          <div class="field">
+            <label for="f3-mobile">Mobile</label>
+            <input type="text" id="f3-mobile" inputmode="numeric" maxlength="10" data-adv>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>4 · Basis of enrolment</h2>
+        <div class="choice-group">
+          <label><input type="radio" name="f3-basis" value="document" data-adv> Document verification</label>
+          <label><input type="radio" name="f3-basis" value="hof" data-adv> Head of Family confirmation</label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>5 · Address</h2>
+        <div class="row">
+          <div class="field narrow">
+            <label for="f3-house">House</label>
+            <input type="text" id="f3-house" data-adv>
+          </div>
+          <div class="field">
+            <label for="f3-street">Street / road</label>
+            <input type="text" id="f3-street" data-adv>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f3-landmark">Landmark</label>
+            <input type="text" id="f3-landmark" data-adv>
+          </div>
+          <div class="field narrow">
+            <label for="f3-ward">Ward no.</label>
+            <input type="text" id="f3-ward" data-adv>
+          </div>
+          <div class="field">
+            <label for="f3-area">Area / locality</label>
+            <input type="text" id="f3-area" data-adv>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f3-village">Village / Town / City</label>
+            <input type="text" id="f3-village" data-adv>
+          </div>
+          <div class="field">
+            <label for="f3-post-office">Post office</label>
+            <input type="text" id="f3-post-office" data-adv>
+          </div>
+          <div class="field narrow">
+            <label for="f3-pin">PIN</label>
+            <input type="text" id="f3-pin" inputmode="numeric" maxlength="6" data-adv>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f3-subdistrict">Sub-district / Taluk</label>
+            <input type="text" id="f3-subdistrict" data-adv>
+          </div>
+          <div class="field">
+            <label for="f3-district">District</label>
+            <input type="text" id="f3-district" data-adv>
+          </div>
+          <div class="field">
+            <label for="f3-state">State</label>
+            <input type="text" id="f3-state" data-adv>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f3-poi">Proof of Identity (POI) document</label>
+            <input type="text" id="f3-poi" data-adv>
+          </div>
+          <div class="field">
+            <label for="f3-poa">Proof of Address (POA) document</label>
+            <input type="text" id="f3-poa" data-adv>
+          </div>
+          <div class="field">
+            <label for="f3-pdb">Proof of DOB (PDB) document</label>
+            <input type="text" id="f3-pdb" data-adv>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>6 · Head of family (for the child)</h2>
+        <div class="row">
+          <div class="field">
+            <label for="f3-hof-name">HoF name</label>
+            <input type="text" id="f3-hof-name" data-adv>
+          </div>
+          <div class="field">
+            <label for="f3-hof-aadhaar">HoF Aadhaar (12 digits)</label>
+            <input type="text" id="f3-hof-aadhaar" inputmode="numeric" maxlength="12" data-adv>
+            <span class="hint" data-status-for="hofAadhaar"></span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label>Relationship with the child</label>
+            <div class="choice-group">
+              <label><input type="radio" name="f3-relationship" value="mother" data-adv> Mother</label>
+              <label><input type="radio" name="f3-relationship" value="father" data-adv> Father</label>
+              <label><input type="radio" name="f3-relationship" value="guardian" data-adv> Legal guardian</label>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label for="f3-por">Proof of Relationship (POR) document</label>
+            <input type="text" id="f3-por" data-adv>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>7 · Child's Aadhaar &amp; update fields</h2>
+        <div class="row">
+          <div class="field">
+            <label for="f3-applicant-aadhaar">Aadhaar number of the child (12 digits, Update only)</label>
+            <input type="text" id="f3-applicant-aadhaar" inputmode="numeric" maxlength="12" data-adv>
+            <span class="hint" data-status-for="applicantAadhaar"></span>
+            <div class="warning-line" data-dup-warning-for="applicantAadhaar" hidden></div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label>Information to be updated</label>
+            <div class="choice-group">
+              <label><input type="checkbox" name="f3-upd" value="biometric" data-adv> Biometric</label>
+              <label><input type="checkbox" name="f3-upd" value="name" data-adv> Name</label>
+              <label><input type="checkbox" name="f3-upd" value="dob" data-adv> DOB</label>
+              <label><input type="checkbox" name="f3-upd" value="gender" data-adv> Gender</label>
+              <label><input type="checkbox" name="f3-upd" value="address" data-adv> Address</label>
+              <label><input type="checkbox" name="f3-upd" value="mobile" data-adv> Mobile</label>
+              <label><input type="checkbox" name="f3-upd" value="email" data-adv> Email</label>
+              <label><input type="checkbox" name="f3-upd" value="poiPoa" data-adv> POI/POA</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn-print-one">Print this record <span class="kbd">Ctrl+Enter</span></button>
+        <button type="button" class="btn-queue secondary">Add to queue <span class="kbd">Ctrl+S</span></button>
+        <button type="button" class="btn-clear-form secondary">Clear form</button>
+      </div>
+    </form>
+
+    <form id="entry-form-form5-en" class="entry-form" data-form-id="form5-en" autocomplete="off" hidden>
+
+      <div class="panel">
+        <h2>1 · Purpose &amp; status</h2>
+        <div class="row">
+          <div class="field">
+            <label>Purpose</label>
+            <div class="choice-group">
+              <label><input type="radio" name="f5-purpose" value="enrolment" data-adv> Enrolment</label>
+              <label><input type="radio" name="f5-purpose" value="update" data-adv> Update</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Resident status</label>
+            <div class="choice-group">
+              <label><input type="radio" name="f5-status" value="resident" data-adv> Resident Indian</label>
+              <label><input type="radio" name="f5-status" value="nri" data-adv> NRI</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>3 · Demographic information</h2>
+
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label for="f5-name">Child's full name (block capitals, no titles)</label>
+            <input type="text" id="f5-name" data-adv>
+            <div class="warning-line" data-warning-for="name" hidden></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Gender</label>
+            <div class="choice-group">
+              <label><input type="radio" name="f5-gender" value="female" data-adv> Female</label>
+              <label><input type="radio" name="f5-gender" value="male" data-adv> Male</label>
+              <label><input type="radio" name="f5-gender" value="third" data-adv> Third gender</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field narrow">
+            <label for="f5-dob">DOB (DDMMYYYY)</label>
+            <input type="text" id="f5-dob" inputmode="numeric" maxlength="8" placeholder="DDMMYYYY" data-adv>
+            <span class="hint mono" data-hint-for="dob"></span>
+          </div>
+          <div class="field narrow">
+            <label for="f5-age">or Age (years)</label>
+            <input type="text" id="f5-age" inputmode="numeric" maxlength="3" data-adv>
+          </div>
+          <div class="field">
+            <label>DOB basis</label>
+            <div class="choice-group">
+              <label><input type="radio" name="f5-dobBasis" value="verified" data-adv> Verified</label>
+              <label><input type="radio" name="f5-dobBasis" value="declared" data-adv> Declared</label>
+              <label><input type="radio" name="f5-dobBasis" value="approximate" data-adv> Approximate</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="f5-email">Email <span class="req" data-required-note-for="email" hidden>(mandatory for NRI)</span></label>
+            <input type="text" id="f5-email" data-adv>
+          </div>
+          <div class="field">
+            <label for="f5-mobile">Mobile</label>
+            <input type="text" id="f5-mobile" inputmode="numeric" maxlength="10" data-adv>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>4 · Basis of enrolment</h2>
+        <div class="choice-group">
+          <label><input type="radio" name="f5-basis" value="document" data-adv> Document verification</label>
+          <label><input type="radio" name="f5-basis" value="hof" data-adv> Confirmation by Head(s) of Family</label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>5 · Address</h2>
+        <div class="row">
+          <div class="field narrow">
+            <label for="f5-house">House</label>
+            <input type="text" id="f5-house" data-adv>
+          </div>
+          <div class="field">
+            <label for="f5-street">Street / road</label>
+            <input type="text" id="f5-street" data-adv>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f5-landmark">Landmark</label>
+            <input type="text" id="f5-landmark" data-adv>
+          </div>
+          <div class="field narrow">
+            <label for="f5-ward">Ward no.</label>
+            <input type="text" id="f5-ward" data-adv>
+          </div>
+          <div class="field">
+            <label for="f5-area">Area / locality</label>
+            <input type="text" id="f5-area" data-adv>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f5-village">Village / Town / City</label>
+            <input type="text" id="f5-village" data-adv>
+          </div>
+          <div class="field">
+            <label for="f5-post-office">Post office</label>
+            <input type="text" id="f5-post-office" data-adv>
+          </div>
+          <div class="field narrow">
+            <label for="f5-pin">PIN</label>
+            <input type="text" id="f5-pin" inputmode="numeric" maxlength="6" data-adv>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f5-subdistrict">Sub-district / Taluk</label>
+            <input type="text" id="f5-subdistrict" data-adv>
+          </div>
+          <div class="field">
+            <label for="f5-district">District</label>
+            <input type="text" id="f5-district" data-adv>
+          </div>
+          <div class="field">
+            <label for="f5-state">State</label>
+            <input type="text" id="f5-state" data-adv>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f5-poi">Proof of Identity (POI) document</label>
+            <input type="text" id="f5-poi" data-adv>
+          </div>
+          <div class="field">
+            <label for="f5-poa">Proof of Address (POA) document</label>
+            <input type="text" id="f5-poa" data-adv>
+          </div>
+          <div class="field">
+            <label for="f5-pdb">Proof of DOB (PDB) document</label>
+            <input type="text" id="f5-pdb" data-adv>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>6 · Head(s) of family</h2>
+        <div class="row">
+          <div class="field">
+            <label for="f5-mother-name">Mother's name</label>
+            <input type="text" id="f5-mother-name" data-adv>
+          </div>
+          <div class="field">
+            <label for="f5-mother-aadhaar">Mother's Aadhaar (12 digits)</label>
+            <input type="text" id="f5-mother-aadhaar" inputmode="numeric" maxlength="12" data-adv>
+            <span class="hint" data-status-for="motherAadhaar"></span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f5-father-name">Father's name</label>
+            <input type="text" id="f5-father-name" data-adv>
+          </div>
+          <div class="field">
+            <label for="f5-father-aadhaar">Father's Aadhaar (12 digits)</label>
+            <input type="text" id="f5-father-aadhaar" inputmode="numeric" maxlength="12" data-adv>
+            <span class="hint" data-status-for="fatherAadhaar"></span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label>If only one parent's details are given, is the other parent currently not residing with the child?</label>
+            <div class="choice-group">
+              <label><input type="radio" name="f5-other-parent-absent" value="yes" data-adv> Yes</label>
+              <label><input type="radio" name="f5-other-parent-absent" value="no" data-adv> No</label>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f5-guardian-name">OR legal guardian's name</label>
+            <input type="text" id="f5-guardian-name" data-adv>
+          </div>
+          <div class="field">
+            <label for="f5-guardian-aadhaar">Legal guardian's Aadhaar (12 digits)</label>
+            <input type="text" id="f5-guardian-aadhaar" inputmode="numeric" maxlength="12" data-adv>
+            <span class="hint" data-status-for="guardianAadhaar"></span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label>Relationship with the child (tick all that apply)</label>
+            <div class="choice-group">
+              <label><input type="checkbox" name="f5-relationship" value="mother" data-adv> Mother</label>
+              <label><input type="checkbox" name="f5-relationship" value="father" data-adv> Father</label>
+              <label><input type="checkbox" name="f5-relationship" value="guardian" data-adv> Legal guardian</label>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label for="f5-por">Proof of Relationship (POR) document</label>
+            <input type="text" id="f5-por" data-adv>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>7 · Child's Aadhaar &amp; update fields</h2>
+        <div class="row">
+          <div class="field">
+            <label for="f5-applicant-aadhaar">Aadhaar number of the child (12 digits, Update only)</label>
+            <input type="text" id="f5-applicant-aadhaar" inputmode="numeric" maxlength="12" data-adv>
+            <span class="hint" data-status-for="applicantAadhaar"></span>
+            <div class="warning-line" data-dup-warning-for="applicantAadhaar" hidden></div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex-basis:100%">
+            <label>Information to be updated</label>
+            <div class="choice-group">
+              <label><input type="checkbox" name="f5-upd" value="biometric" data-adv> Biometric</label>
+              <label><input type="checkbox" name="f5-upd" value="name" data-adv> Name</label>
+              <label><input type="checkbox" name="f5-upd" value="dob" data-adv> DOB</label>
+              <label><input type="checkbox" name="f5-upd" value="gender" data-adv> Gender</label>
+              <label><input type="checkbox" name="f5-upd" value="address" data-adv> Address</label>
+              <label><input type="checkbox" name="f5-upd" value="mobile" data-adv> Mobile</label>
+              <label><input type="checkbox" name="f5-upd" value="email" data-adv> Email</label>
+              <label><input type="checkbox" name="f5-upd" value="poiPoa" data-adv> POI/POA</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn-print-one">Print this record <span class="kbd">Ctrl+Enter</span></button>
+        <button type="button" class="btn-queue secondary">Add to queue <span class="kbd">Ctrl+S</span></button>
+        <button type="button" class="btn-clear-form secondary">Clear form</button>
       </div>
     </form>
   </div>
@@ -324,10 +799,14 @@
 
 <script src="vendor/pdf-lib.min.js"></script>
 <script src="js/template-form1-en.js"></script>
+<script src="js/template-form3-en.js"></script>
+<script src="js/template-form5-en.js"></script>
 <script src="js/validation.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/schema-runtime.js"></script>
 <script src="js/schema-form1-en.js"></script>
+<script src="js/schema-form3-en.js"></script>
+<script src="js/schema-form5-en.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -9,6 +9,6 @@ test('index.html loads with no console errors', async ({ page }) => {
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForTimeout(500);
 
-  await expect(page).toHaveTitle(/UIDAI Form 1/);
+  await expect(page).toHaveTitle(/UIDAI/);
   expect(errors).toEqual([]);
 });
