@@ -1,238 +1,69 @@
 (function () {
   "use strict";
 
-  var TEMPLATE = window.FORM1_EN_TEMPLATE;
-  var MM2PT = 72 / 25.4;
-  var MM_PER_PT = 25.4 / 72;
-  var GRID_FONT_SIZE_PT = 9;
+  var Engine = window.FormEngine;
+  var Runtime = window.SchemaRuntime;
 
-  var FIELD_INPUT_MAP = {
-    name: "f-name",
-    email: "f-email",
-    addr_house: "f-house",
-    addr_street: "f-street",
-    addr_landmark: "f-landmark",
-    addr_ward: "f-ward",
-    addr_area: "f-area",
-    addr_village: "f-village",
-    addr_post_office: "f-post-office",
-    addr_subdistrict: "f-subdistrict",
-    addr_district: "f-district",
-    addr_state: "f-state",
-    doc_poi: "f-poi",
-    doc_poa: "f-poa",
-    doc_pdb: "f-pdb",
-    hof_name: "f-hof-name",
-    doc_por: "f-por",
+  var REGISTRY = {
+    "form1-en": { schema: window.SCHEMA_FORM1_EN, template: window.FORM1_EN_TEMPLATE, label: "Form 1" },
+    "form3-en": { schema: window.SCHEMA_FORM3_EN, template: window.FORM3_EN_TEMPLATE, label: "Form 3" },
+    "form5-en": { schema: window.SCHEMA_FORM5_EN, template: window.FORM5_EN_TEMPLATE, label: "Form 5" },
   };
+  var DEFAULT_FORM_ID = "form1-en";
 
-  // ---- record model ----------------------------------------------------
-
-  function makeEmptyRecord() {
-    return {
-      purpose: "", status: "", name: "", gender: "", dob: "", age: "", dobBasis: "",
-      email: "", mobile: "", basis: "",
-      addr: { house: "", street: "", landmark: "", ward: "", area: "", village: "",
-        postOffice: "", pin: "", subdistrict: "", district: "", state: "" },
-      docPoi: "", docPoa: "", docPdb: "",
-      hofName: "", hofAadhaar: "", relationship: "", docPor: "",
-      applicantAadhaar: "",
-      updates: { biometric: false, name: false, dob: false, gender: false,
-        address: false, mobile: false, email: false, poiPoa: false },
-    };
-  }
-
-  var record = makeEmptyRecord();
-  var queue = [];
-  var lastPlan = [];
-  var FONTS_METRICS = null;
+  var queue = []; // [{id, formId, record}], shared across all three forms
+  var recordsByForm = {}; // formId -> record, preserves in-progress state across tab switches
   var currentPreviewUrl = null;
   var STOPS = [];
 
-  function setPath(obj, path, value) {
-    var parts = path.split(".");
-    var o = obj;
-    for (var i = 0; i < parts.length - 1; i++) o = o[parts[i]];
-    o[parts[parts.length - 1]] = value;
+  // Shared mutable state the schema runtime reads/writes. `record`/
+  // `template`/`schema`/`formRoot` always describe the CURRENTLY ACTIVE
+  // form -- switchForm() swaps them. Bound input handlers close over this
+  // one ctx, which is safe because only the active form's inputs are
+  // visible/focusable at any moment.
+  var ctx = {
+    activeFormId: null,
+    registry: REGISTRY,
+    record: null,
+    queue: queue,
+    lastPlan: [],
+    template: null,
+    schema: null,
+    formRoot: null,
+    fontsMetrics: null,
+    canvasId: "preview-canvas",
+    drawPreview: function () { Runtime.drawPreview(ctx.schema, ctx); },
+    touchActivity: function () { touchActivity(); },
+  };
+
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 
-  function recordToFieldValues(rec) {
-    return {
-      purpose_enrolment: rec.purpose === "enrolment",
-      purpose_update: rec.purpose === "update",
-      status_resident: rec.status === "resident",
-      status_nri: rec.status === "nri",
-      name: rec.name,
-      gender_female: rec.gender === "female",
-      gender_male: rec.gender === "male",
-      gender_third: rec.gender === "third",
-      dob: rec.dob,
-      age: rec.age,
-      dob_verified: rec.dobBasis === "verified",
-      dob_declared: rec.dobBasis === "declared",
-      dob_approximate: rec.dobBasis === "approximate",
-      email: rec.email,
-      mobile: rec.mobile,
-      basis_document: rec.basis === "document",
-      basis_hof: rec.basis === "hof",
-      addr_house: rec.addr.house,
-      addr_street: rec.addr.street,
-      addr_landmark: rec.addr.landmark,
-      addr_ward: rec.addr.ward,
-      addr_area: rec.addr.area,
-      addr_village: rec.addr.village,
-      addr_post_office: rec.addr.postOffice,
-      addr_pin: rec.addr.pin,
-      addr_subdistrict: rec.addr.subdistrict,
-      addr_district: rec.addr.district,
-      addr_state: rec.addr.state,
-      doc_poi: rec.docPoi,
-      doc_poa: rec.docPoa,
-      doc_pdb: rec.docPdb,
-      hof_name: rec.hofName,
-      hof_aadhaar_1: rec.hofAadhaar.slice(0, 4),
-      hof_aadhaar_2: rec.hofAadhaar.slice(4, 8),
-      hof_aadhaar_3: rec.hofAadhaar.slice(8, 12),
-      rel_mother: rec.relationship === "mother",
-      rel_father: rec.relationship === "father",
-      rel_guardian: rec.relationship === "guardian",
-      rel_spouse: rec.relationship === "spouse",
-      rel_child: rec.relationship === "child",
-      rel_sibling: rec.relationship === "sibling",
-      doc_por: rec.docPor,
-      applicant_aadhaar_1: rec.applicantAadhaar.slice(0, 4),
-      applicant_aadhaar_2: rec.applicantAadhaar.slice(4, 8),
-      applicant_aadhaar_3: rec.applicantAadhaar.slice(8, 12),
-      upd_biometric: rec.updates.biometric,
-      upd_name: rec.updates.name,
-      upd_dob: rec.updates.dob,
-      upd_gender: rec.updates.gender,
-      upd_address: rec.updates.address,
-      upd_mobile: rec.updates.mobile,
-      upd_email: rec.updates.email,
-      upd_poi_poa: rec.updates.poiPoa,
-    };
-  }
+  function switchForm(formId) {
+    if (ctx.activeFormId) recordsByForm[ctx.activeFormId] = ctx.record;
 
-  // ---- shared render plan (used by both canvas preview and PDF export) ----
+    ctx.activeFormId = formId;
+    ctx.template = REGISTRY[formId].template;
+    ctx.schema = REGISTRY[formId].schema;
+    ctx.formRoot = document.getElementById("entry-form-" + formId);
+    ctx.record = recordsByForm[formId] || Runtime.makeEmptyRecord(ctx.schema);
 
-  function fitTextSize(font, text, wPt, preferredPt) {
-    var size = preferredPt;
-    while (size > 4 && font.widthOfTextAtSize(text, size) > wPt) size -= 0.25;
-    return Math.max(size, 4);
-  }
-
-  function computeRenderPlan(fieldValues) {
-    var ops = [];
-    Object.keys(TEMPLATE.fields).forEach(function (name) {
-      var f = TEMPLATE.fields[name];
-      var v = fieldValues[name];
-      if (f.kind === "tick") {
-        ops.push({ name: name, kind: "tick", x: f.x, y: f.y, on: !!v });
-      } else if (f.kind === "grid") {
-        if (v) {
-          ops.push({ name: name, kind: "grid", x: f.x, y: f.y, h: f.h,
-            pitch: f.pitch, cells: f.cells, chars: String(v).split("") });
-        }
-      } else if (f.kind === "text") {
-        if (v) {
-          var text = String(v);
-          var size = FONTS_METRICS
-            ? fitTextSize(FONTS_METRICS.helveticaBold, text, f.w * MM2PT, f.size)
-            : f.size;
-          ops.push({ name: name, kind: "text", x: f.x, y: f.y, w: f.w,
-            text: text, sizePt: size, overflow: size < f.size });
-        }
-      }
+    document.querySelectorAll(".entry-form").forEach(function (f) {
+      f.hidden = f.dataset.formId !== formId;
     });
-    return ops;
-  }
-
-  function computeMaxLen(fieldDef) {
-    var wPt = fieldDef.w * MM2PT;
-    var n = 1;
-    while (FONTS_METRICS.helveticaBold.widthOfTextAtSize("M".repeat(n + 1), 6) <= wPt) n++;
-    return Math.max(n, 1);
-  }
-
-  function applyComputedMaxLengths() {
-    Object.keys(FIELD_INPUT_MAP).forEach(function (fieldName) {
-      var el = document.getElementById(FIELD_INPUT_MAP[fieldName]);
-      if (!el || el.hasAttribute("maxlength")) return;
-      el.maxLength = computeMaxLen(TEMPLATE.fields[fieldName]);
-    });
-  }
-
-  // ---- canvas live preview ----------------------------------------------
-
-  function drawFieldCanvas(ctx, op) {
-    if (op.kind === "tick") {
-      if (!op.on) return;
-      var arm = 1.3;
-      ctx.strokeStyle = "#111";
-      ctx.lineWidth = 0.9 * MM_PER_PT;
-      ctx.beginPath();
-      ctx.moveTo(op.x - arm, op.y - arm);
-      ctx.lineTo(op.x + arm, op.y + arm);
-      ctx.moveTo(op.x - arm, op.y + arm);
-      ctx.lineTo(op.x + arm, op.y - arm);
-      ctx.stroke();
-    } else if (op.kind === "grid") {
-      ctx.fillStyle = "#111";
-      ctx.font = (GRID_FONT_SIZE_PT * MM_PER_PT) + 'px "Courier New", monospace';
-      ctx.textAlign = "center";
-      ctx.textBaseline = "alphabetic";
-      for (var i = 0; i < op.cells; i++) {
-        var ch = op.chars[i];
-        if (!ch) continue;
-        var cx = op.x + i * op.pitch + op.pitch / 2;
-        var by = op.y + op.h - 0.85;
-        ctx.fillText(ch, cx, by);
-      }
-    } else if (op.kind === "text") {
-      ctx.fillStyle = op.overflow ? "#a1260e" : "#111";
-      ctx.font = "bold " + (op.sizePt * MM_PER_PT) + "px Arial, Helvetica, sans-serif";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "alphabetic";
-      ctx.fillText(op.text, op.x, op.y);
-    }
-  }
-
-  function drawPreview() {
-    var canvas = document.getElementById("preview-canvas");
-    var ctx = canvas.getContext("2d");
-    var pageW = TEMPLATE.page.widthMm;
-    var pxPerMm = canvas.width / pageW;
-
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.scale(pxPerMm, pxPerMm);
-
-    ctx.strokeStyle = "#c7cbd1";
-    ctx.lineWidth = 0.15;
-    TEMPLATE.wire.forEach(function (r) {
-      ctx.strokeRect(r[0], r[1], r[2], r[3]);
+    document.querySelectorAll(".form-tab").forEach(function (t) {
+      var active = t.dataset.formId === formId;
+      t.classList.toggle("active", active);
+      t.setAttribute("aria-selected", active ? "true" : "false");
     });
 
-    var plan = computeRenderPlan(recordToFieldValues(record));
-    lastPlan = plan;
-    plan.forEach(function (op) {
-      drawFieldCanvas(ctx, op);
-    });
-
-    ctx.restore();
-    updateNameWarnings();
+    Runtime.sizeCanvasToTemplate(document.getElementById("preview-canvas"), ctx.template);
+    STOPS = buildStops();
+    Runtime.applyRecordToForm(ctx.schema, ctx.record, ctx);
   }
 
-  // ---- PDF export (place() per build spec section 3) --------------------
-
-  function place(xMm, yMm, cal, H) {
-    return [
-      (xMm * cal.scale + cal.dx) * MM2PT,
-      H - (yMm * cal.scale + cal.dy) * MM2PT,
-    ];
-  }
+  // ---- PDF export ---------------------------------------------------------
 
   function getCurrentCalibration() {
     return {
@@ -242,115 +73,25 @@
     };
   }
 
-  function drawFieldPdf(page, fonts, cal, H, op) {
-    if (op.kind === "tick") {
-      if (!op.on) return;
-      var arm = 1.3;
-      var p1 = place(op.x - arm, op.y - arm, cal, H);
-      var p2 = place(op.x + arm, op.y + arm, cal, H);
-      var p3 = place(op.x - arm, op.y + arm, cal, H);
-      var p4 = place(op.x + arm, op.y - arm, cal, H);
-      page.drawLine({ start: { x: p1[0], y: p1[1] }, end: { x: p2[0], y: p2[1] }, thickness: 0.9, color: PDFLib.rgb(0, 0, 0) });
-      page.drawLine({ start: { x: p3[0], y: p3[1] }, end: { x: p4[0], y: p4[1] }, thickness: 0.9, color: PDFLib.rgb(0, 0, 0) });
-    } else if (op.kind === "grid") {
-      for (var i = 0; i < op.cells; i++) {
-        var ch = op.chars[i];
-        if (!ch) continue;
-        var cx = op.x + i * op.pitch + op.pitch / 2;
-        var by = op.y + op.h - 0.85;
-        var pt = place(cx, by, cal, H);
-        var w = fonts.courier.widthOfTextAtSize(ch, GRID_FONT_SIZE_PT);
-        page.drawText(ch, { x: pt[0] - w / 2, y: pt[1], size: GRID_FONT_SIZE_PT, font: fonts.courier, color: PDFLib.rgb(0, 0, 0) });
-      }
-    } else if (op.kind === "text") {
-      var ptt = place(op.x, op.y, cal, H);
-      page.drawText(op.text, { x: ptt[0], y: ptt[1], size: op.sizePt, font: fonts.helveticaBold, color: PDFLib.rgb(0, 0, 0) });
-    }
-  }
-
-  async function embedDrawFonts(doc) {
-    var helveticaBold = await doc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-    var courier = await doc.embedFont(PDFLib.StandardFonts.Courier);
-    return { helveticaBold: helveticaBold, courier: courier };
-  }
-
-  function pageSizePt() {
-    return [TEMPLATE.page.widthMm * MM2PT, TEMPLATE.page.heightMm * MM2PT];
-  }
-
   async function generateSingleRecordPdf(rec) {
-    var doc = await PDFLib.PDFDocument.create();
-    var fonts = await embedDrawFonts(doc);
-    var size = pageSizePt();
-    var page = doc.addPage(size);
-    var cal = getCurrentCalibration();
-    var plan = computeRenderPlan(recordToFieldValues(rec));
-    plan.forEach(function (op) { drawFieldPdf(page, fonts, cal, size[1], op); });
-    return doc.save();
+    var fieldValues = Runtime.recordToFieldValues(ctx.schema, rec);
+    return Engine.generateSingleRecordPdf(ctx.template, fieldValues, getCurrentCalibration(), ctx.fontsMetrics);
   }
 
-  async function generateQueuePdf(records) {
-    var doc = await PDFLib.PDFDocument.create();
-    var fonts = await embedDrawFonts(doc);
-    var size = pageSizePt();
-    var cal = getCurrentCalibration();
-    records.forEach(function (rec) {
-      var page = doc.addPage(size);
-      var plan = computeRenderPlan(recordToFieldValues(rec));
-      plan.forEach(function (op) { drawFieldPdf(page, fonts, cal, size[1], op); });
+  async function generateQueuePdf() {
+    var entries = queue.map(function (entry) {
+      var reg = REGISTRY[entry.formId];
+      return { template: reg.template, fieldValues: Runtime.recordToFieldValues(reg.schema, entry.record) };
     });
-    return doc.save();
+    return Engine.generateQueuePdf(entries, getCurrentCalibration(), ctx.fontsMetrics);
   }
 
   async function generateBlankPdf() {
-    var doc = await PDFLib.PDFDocument.create();
-    doc.addPage(pageSizePt());
-    return doc.save();
+    return Engine.generateBlankPdf(ctx.template);
   }
 
   async function generateAlignmentSheetPdf() {
-    var doc = await PDFLib.PDFDocument.create();
-    var font = await doc.embedFont(PDFLib.StandardFonts.Helvetica);
-    var size = pageSizePt();
-    var H = size[1];
-    var page = doc.addPage(size);
-    var cal = getCurrentCalibration();
-    var grey = PDFLib.rgb(0.55, 0.55, 0.55);
-    var black = PDFLib.rgb(0, 0, 0);
-
-    TEMPLATE.wire.forEach(function (r) {
-      var x = r[0], y = r[1], w = r[2], h = r[3];
-      var bl = place(x, y + h, cal, H);
-      page.drawRectangle({
-        x: bl[0], y: bl[1],
-        width: w * cal.scale * MM2PT, height: h * cal.scale * MM2PT,
-        borderColor: grey, borderWidth: 0.25,
-      });
-    });
-
-    var armMm = 8;
-    var c1 = place(20 - armMm, 20, cal, H), c2 = place(20 + armMm, 20, cal, H);
-    var c3 = place(20, 20 - armMm, cal, H), c4 = place(20, 20 + armMm, cal, H);
-    page.drawLine({ start: { x: c1[0], y: c1[1] }, end: { x: c2[0], y: c2[1] }, thickness: 0.5, color: black });
-    page.drawLine({ start: { x: c3[0], y: c3[1] }, end: { x: c4[0], y: c4[1] }, thickness: 0.5, color: black });
-    var crossLabel = place(20 + 2, 20 + 10, cal, H);
-    page.drawText("Crosshair centre should measure 20.00mm from the top edge and 20.00mm from the left edge.",
-      { x: crossLabel[0], y: crossLabel[1], size: 7, font: font, color: black });
-
-    var barY = 250;
-    var b1 = place(30, barY, cal, H), b2 = place(180, barY, cal, H);
-    page.drawLine({ start: { x: b1[0], y: b1[1] }, end: { x: b2[0], y: b2[1] }, thickness: 0.5, color: black });
-    for (var mm = 0; mm <= 150; mm += 10) {
-      var tall = mm % 50 === 0;
-      var half = tall ? 3 : 1.5;
-      var t1 = place(30 + mm, barY - half, cal, H), t2 = place(30 + mm, barY + half, cal, H);
-      page.drawLine({ start: { x: t1[0], y: t1[1] }, end: { x: t2[0], y: t2[1] }, thickness: 0.5, color: black });
-    }
-    var barLabel = place(30, barY + 8, cal, H);
-    page.drawText("Bar should measure exactly 150.00mm end to end (ticks every 10mm, tall every 50mm).",
-      { x: barLabel[0], y: barLabel[1], size: 7, font: font, color: black });
-
-    return doc.save();
+    return Engine.generateAlignmentSheetPdf(ctx.template, getCurrentCalibration());
   }
 
   // ---- PDF preview / print -----------------------------------------------
@@ -377,226 +118,28 @@
     document.getElementById("pdf-preview-wrap").style.display = "none";
   }
 
-  // ---- validation UI hooks -----------------------------------------------
-
-  function updateEmailRequired() {
-    document.getElementById("email-req").hidden = record.status !== "nri";
-  }
-
-  function updateDobHint(v) {
-    var el = document.getElementById("dob-hint");
-    el.textContent = v.length === 8 ? "→ " + v.slice(0, 2) + "/" + v.slice(2, 4) + "/" + v.slice(4, 8) : "";
-  }
-
-  function updateAadhaarStatus(inputId, value) {
-    var statusElId = inputId === "f-hof-aadhaar" ? "hof-aadhaar-status" : "applicant-aadhaar-status";
-    var statusEl = document.getElementById(statusElId);
-    if (value.length < 12) {
-      statusEl.textContent = (12 - value.length) + " digit(s) remaining";
-    } else {
-      var ok = Validation.verhoeffValid(value);
-      statusEl.innerHTML = ok
-        ? '<span class="badge ok">Verhoeff OK</span>'
-        : '<span class="badge bad">Verhoeff FAIL</span>';
-    }
-    if (inputId === "f-applicant-aadhaar") {
-      var dup = value.length === 12 && queue.some(function (r) {
-        return r.applicantAadhaar === value || r.hofAadhaar === value;
-      });
-      var dupEl = document.getElementById("dup-warning");
-      dupEl.hidden = !dup;
-      if (dup) dupEl.textContent = "This Aadhaar number is already in the queue.";
-    }
-  }
-
-  function updateNameWarnings() {
-    var msgs = [];
-    var title = Validation.detectTitles(record.name);
-    if (title) msgs.push('Remove title/honorific "' + title + '" — UIDAI requires it omitted.');
-    var nameOp = lastPlan.filter(function (o) { return o.name === "name"; })[0];
-    if (nameOp && nameOp.overflow) {
-      msgs.push("Name shrunk to " + nameOp.sizePt.toFixed(2) + "pt (preferred " +
-        TEMPLATE.fields.name.size + "pt) — consider abbreviating.");
-    }
-    var el = document.getElementById("name-warning");
-    if (msgs.length) {
-      el.hidden = false;
-      el.innerHTML = msgs.join("<br>");
-    } else {
-      el.hidden = true;
-    }
-  }
-
-  // ---- form <-> record wiring ---------------------------------------------
-
-  var TEXT_BINDINGS = [
-    ["f-name", "name", {}],
-    ["f-email", "email", {}],
-    ["f-house", "addr.house", {}],
-    ["f-street", "addr.street", {}],
-    ["f-landmark", "addr.landmark", {}],
-    ["f-ward", "addr.ward", {}],
-    ["f-area", "addr.area", {}],
-    ["f-village", "addr.village", {}],
-    ["f-post-office", "addr.postOffice", {}],
-    ["f-subdistrict", "addr.subdistrict", {}],
-    ["f-district", "addr.district", {}],
-    ["f-state", "addr.state", {}],
-    ["f-poi", "docPoi", {}],
-    ["f-poa", "docPoa", {}],
-    ["f-pdb", "docPdb", {}],
-    ["f-hof-name", "hofName", {}],
-    ["f-por", "docPor", {}],
-    ["f-dob", "dob", { digits: true, maxlen: 8 }],
-    ["f-age", "age", { digits: true, maxlen: 3 }],
-    ["f-mobile", "mobile", { digits: true, maxlen: 10 }],
-    ["f-pin", "addr.pin", { digits: true, maxlen: 6 }],
-    ["f-hof-aadhaar", "hofAadhaar", { digits: true, maxlen: 12, aadhaar: true }],
-    ["f-applicant-aadhaar", "applicantAadhaar", { digits: true, maxlen: 12, aadhaar: true }],
-  ];
-
-  function bindTextInput(id, path, opts) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener("input", function () {
-      var raw = el.value;
-      var pos = el.selectionStart;
-      var cleaned;
-      if (opts.digits) {
-        var digitsBefore = raw.slice(0, pos).replace(/\D/g, "").length;
-        cleaned = raw.replace(/\D/g, "");
-        if (opts.maxlen) cleaned = cleaned.slice(0, opts.maxlen);
-        el.value = cleaned;
-        var newPos = Math.min(digitsBefore, cleaned.length);
-        el.setSelectionRange(newPos, newPos);
-      } else {
-        cleaned = raw.toUpperCase();
-        el.value = cleaned;
-        el.setSelectionRange(pos, pos);
-      }
-      setPath(record, path, cleaned);
-      if (opts.aadhaar) updateAadhaarStatus(id, cleaned);
-      if (id === "f-dob") updateDobHint(cleaned);
-      touchActivity();
-      drawPreview();
-    });
-  }
-
-  function setRadio(name, value) {
-    document.querySelectorAll('input[name="' + name + '"]').forEach(function (r) {
-      r.checked = r.value === value;
-    });
-  }
-
-  function applyRecordToForm(rec) {
-    record = rec;
-    document.getElementById("f-name").value = rec.name;
-    document.getElementById("f-email").value = rec.email;
-    document.getElementById("f-house").value = rec.addr.house;
-    document.getElementById("f-street").value = rec.addr.street;
-    document.getElementById("f-landmark").value = rec.addr.landmark;
-    document.getElementById("f-ward").value = rec.addr.ward;
-    document.getElementById("f-area").value = rec.addr.area;
-    document.getElementById("f-village").value = rec.addr.village;
-    document.getElementById("f-post-office").value = rec.addr.postOffice;
-    document.getElementById("f-subdistrict").value = rec.addr.subdistrict;
-    document.getElementById("f-district").value = rec.addr.district;
-    document.getElementById("f-state").value = rec.addr.state;
-    document.getElementById("f-poi").value = rec.docPoi;
-    document.getElementById("f-poa").value = rec.docPoa;
-    document.getElementById("f-pdb").value = rec.docPdb;
-    document.getElementById("f-hof-name").value = rec.hofName;
-    document.getElementById("f-por").value = rec.docPor;
-    document.getElementById("f-dob").value = rec.dob;
-    document.getElementById("f-age").value = rec.age;
-    document.getElementById("f-mobile").value = rec.mobile;
-    document.getElementById("f-pin").value = rec.addr.pin;
-    document.getElementById("f-hof-aadhaar").value = rec.hofAadhaar;
-    document.getElementById("f-applicant-aadhaar").value = rec.applicantAadhaar;
-
-    setRadio("purpose", rec.purpose);
-    setRadio("status", rec.status);
-    setRadio("gender", rec.gender);
-    setRadio("dobBasis", rec.dobBasis);
-    setRadio("basis", rec.basis);
-    setRadio("relationship", rec.relationship);
-    document.querySelectorAll('input[name="upd"]').forEach(function (cb) {
-      cb.checked = !!rec.updates[cb.value];
-    });
-
-    updateEmailRequired();
-    updateDobHint(rec.dob);
-    updateAadhaarStatus("f-hof-aadhaar", rec.hofAadhaar);
-    updateAadhaarStatus("f-applicant-aadhaar", rec.applicantAadhaar);
-    drawPreview();
-  }
-
-  function resetForm() {
-    applyRecordToForm(makeEmptyRecord());
-    document.getElementById("f-name").focus();
-  }
-
-  function reuseAddress(queuedRec) {
-    var seeded = makeEmptyRecord();
-    seeded.addr = JSON.parse(JSON.stringify(queuedRec.addr));
-    seeded.docPoa = queuedRec.docPoa;
-    seeded.hofName = queuedRec.hofName;
-    seeded.hofAadhaar = queuedRec.hofAadhaar;
-    applyRecordToForm(seeded);
-    document.getElementById("f-name").focus();
-  }
-
   // ---- queue --------------------------------------------------------------
 
   function addToQueue() {
-    queue.push(JSON.parse(JSON.stringify(record)));
+    queue.push({ id: uid(), formId: ctx.activeFormId, record: JSON.parse(JSON.stringify(ctx.record)) });
     renderQueue();
-    resetForm();
+    Runtime.resetForm(ctx.schema, ctx);
   }
 
   function renderQueue() {
     var ul = document.getElementById("queue-list");
-    ul.innerHTML = "";
-    queue.forEach(function (rec, idx) {
-      var li = document.createElement("li");
-      var who = document.createElement("div");
-      who.className = "who";
-      var strong = document.createElement("strong");
-      strong.textContent = rec.name || "(no name)";
-      var small = document.createElement("small");
-      var aadhaarTail = rec.applicantAadhaar ? "•••• •••• " + rec.applicantAadhaar.slice(8) : "—";
-      small.textContent = (rec.relationship || "—") + " · Aadhaar " + aadhaarTail;
-      who.appendChild(strong);
-      who.appendChild(small);
-
-      var btnWrap = document.createElement("div");
-      btnWrap.style.display = "flex";
-      btnWrap.style.gap = "6px";
-      var btnReuse = document.createElement("button");
-      btnReuse.type = "button";
-      btnReuse.className = "secondary";
-      btnReuse.textContent = "Reuse address";
-      btnReuse.addEventListener("click", function () { reuseAddress(rec); });
-      var btnRemove = document.createElement("button");
-      btnRemove.type = "button";
-      btnRemove.className = "danger";
-      btnRemove.textContent = "Remove";
-      btnRemove.addEventListener("click", function () {
+    Runtime.renderQueueList(REGISTRY, queue, ul, {
+      onReuse: function (entry) { Runtime.reuseAddress(ctx.schema, entry.record, ctx); },
+      onRemove: function (entry, idx) {
         queue.splice(idx, 1);
         renderQueue();
-      });
-      btnWrap.appendChild(btnReuse);
-      btnWrap.appendChild(btnRemove);
-
-      li.appendChild(who);
-      li.appendChild(btnWrap);
-      ul.appendChild(li);
+      },
     });
     document.getElementById("queue-count").textContent = queue.length;
   }
 
   function wipeQueue() {
-    queue = [];
+    queue.length = 0;
     renderQueue();
   }
 
@@ -622,9 +165,9 @@
   }
 
   function wipeAll() {
-    queue = [];
-    renderQueue();
-    applyRecordToForm(makeEmptyRecord());
+    wipeQueue();
+    recordsByForm = {};
+    Runtime.resetForm(ctx.schema, ctx);
     hideIdleBanner();
     lastActivity = Date.now();
   }
@@ -717,7 +260,7 @@
   function buildStops() {
     var stops = [];
     var seenNames = {};
-    document.querySelectorAll("#entry-form [data-adv]").forEach(function (el) {
+    ctx.formRoot.querySelectorAll("[data-adv]").forEach(function (el) {
       if (el.type === "radio" || el.type === "checkbox") {
         if (seenNames[el.name]) return;
         seenNames[el.name] = true;
@@ -742,21 +285,14 @@
   function onGlobalShortcuts(e) {
     if (e.ctrlKey && e.key === "Enter") {
       e.preventDefault();
-      document.getElementById("btn-print-one").click();
+      ctx.formRoot.querySelector(".btn-print-one").click();
     } else if (e.ctrlKey && (e.key === "s" || e.key === "S")) {
       e.preventDefault();
-      document.getElementById("btn-queue").click();
+      ctx.formRoot.querySelector(".btn-queue").click();
     }
   }
 
   // ---- init -----------------------------------------------------------------
-
-  async function initFontsMetrics() {
-    var doc = await PDFLib.PDFDocument.create();
-    var helveticaBold = await doc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-    var courier = await doc.embedFont(PDFLib.StandardFonts.Courier);
-    return { helveticaBold: helveticaBold, courier: courier };
-  }
 
   document.addEventListener("DOMContentLoaded", function () {
     populateProfileSelect();
@@ -810,27 +346,28 @@
       showPdfPreview(await generateAlignmentSheetPdf());
     });
 
-    TEXT_BINDINGS.forEach(function (b) { bindTextInput(b[0], b[1], b[2]); });
-
-    document.querySelectorAll('#entry-form input[type="radio"][data-adv]').forEach(function (el) {
-      el.addEventListener("change", function () {
-        record[el.name] = el.value;
-        if (el.name === "status") updateEmailRequired();
-        touchActivity();
-        drawPreview();
-      });
-    });
-    document.querySelectorAll('#entry-form input[type="checkbox"][data-adv]').forEach(function (el) {
-      el.addEventListener("change", function () {
-        record.updates[el.value] = el.checked;
-        touchActivity();
-        drawPreview();
-      });
+    Object.keys(REGISTRY).forEach(function (formId) {
+      Runtime.bindAllInputs(REGISTRY[formId].schema, ctx);
     });
 
-    document.getElementById("btn-print-one").addEventListener("click", async function () {
-      showPdfPreview(await generateSingleRecordPdf(record));
+    document.querySelectorAll(".form-tab").forEach(function (tab) {
+      tab.addEventListener("click", function () { switchForm(tab.dataset.formId); });
     });
+
+    document.querySelectorAll(".btn-print-one").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        showPdfPreview(await generateSingleRecordPdf(ctx.record));
+      });
+    });
+    document.querySelectorAll(".btn-queue").forEach(function (btn) {
+      btn.addEventListener("click", function () { addToQueue(); });
+    });
+    document.querySelectorAll(".btn-clear-form").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (confirm("Clear the current form?")) Runtime.resetForm(ctx.schema, ctx);
+      });
+    });
+
     document.getElementById("btn-print-blank").addEventListener("click", async function () {
       showPdfPreview(await generateBlankPdf());
     });
@@ -839,11 +376,7 @@
         alert("Queue is empty.");
         return;
       }
-      showPdfPreview(await generateQueuePdf(queue));
-    });
-    document.getElementById("btn-queue").addEventListener("click", function () { addToQueue(); });
-    document.getElementById("btn-clear-form").addEventListener("click", function () {
-      if (confirm("Clear the current form?")) resetForm();
+      showPdfPreview(await generateQueuePdf());
     });
     document.getElementById("btn-wipe-queue").addEventListener("click", function () {
       if (confirm("Wipe the whole queue? This cannot be undone.")) wipeQueue();
@@ -851,20 +384,20 @@
     document.getElementById("btn-do-print").addEventListener("click", doPrintNow);
     document.getElementById("btn-close-preview").addEventListener("click", closePreview);
 
-    STOPS = buildStops();
-    document.getElementById("entry-form").addEventListener("keydown", onEnterAdvance);
+    document.getElementById("entry-pane").addEventListener("keydown", onEnterAdvance);
     document.addEventListener("keydown", onGlobalShortcuts);
     document.addEventListener("keydown", touchActivity, true);
     document.addEventListener("mousedown", touchActivity, true);
 
+    switchForm(DEFAULT_FORM_ID);
     renderQueue();
-    updateEmailRequired();
-    drawPreview();
 
-    initFontsMetrics().then(function (fonts) {
-      FONTS_METRICS = fonts;
-      applyComputedMaxLengths();
-      drawPreview();
+    Engine.initFontsMetrics().then(function (fonts) {
+      ctx.fontsMetrics = fonts;
+      Object.keys(REGISTRY).forEach(function (formId) {
+        Runtime.applyComputedMaxLengths(REGISTRY[formId].schema, REGISTRY[formId].template, fonts);
+      });
+      ctx.drawPreview();
     });
   });
 })();

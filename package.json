@@ -1,0 +1,12 @@
+{
+  "name": "uidai-enr-form-printer",
+  "private": true,
+  "description": "Dev-only test tooling for the UIDAI overlay printer static app. The app itself has no build step and no runtime dependencies -- this package.json exists solely to run the Playwright regression suite in tests/.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.48.2",
+    "pdf-lib": "^1.17.1"
+  }
+}
