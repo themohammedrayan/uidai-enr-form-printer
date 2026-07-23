@@ -1,0 +1,33 @@
+{
+  "form": "Form 5 (English)",
+  "cellSizePt": [10.2, 10.15],
+  "cellTolPt": 0.35,
+  "tickWRange": [4.8, 15.3],
+  "tickHRange": [2.8, 10.2],
+  "dedupeTolPt": 0.5,
+  "maxCellGapPt": 15.0,
+  "wireCutoffTopPt": 700,
+  "expectedFields": 60,
+  "expectedWire": 332,
+  "freeTextLabels": {
+    "name": {"kind": "text", "x": 36.80, "y": 53.44, "w": 161.44, "size": 10.5},
+    "email": {"kind": "text", "x": 37.17, "y": 72.71, "w": 88.47, "size": 9.0},
+    "addr_house": {"kind": "text", "x": 64.89, "y": 93.83, "w": 36.45, "size": 8.5},
+    "addr_street": {"kind": "text", "x": 111.44, "y": 93.83, "w": 86.80, "size": 8.5},
+    "addr_landmark": {"kind": "text", "x": 37.22, "y": 97.94, "w": 43.12, "size": 8.5},
+    "addr_ward": {"kind": "text", "x": 95.22, "y": 97.94, "w": 6.12, "size": 8.5},
+    "addr_area": {"kind": "text", "x": 132.27, "y": 97.94, "w": 66.00, "size": 8.5},
+    "addr_village": {"kind": "text", "x": 49.05, "y": 102.04, "w": 31.29, "size": 8.5},
+    "addr_post_office": {"kind": "text", "x": 112.54, "y": 102.04, "w": 30.12, "size": 8.5},
+    "addr_subdistrict": {"kind": "text", "x": 39.15, "y": 106.19, "w": 41.19, "size": 8.5},
+    "addr_district": {"kind": "text", "x": 92.66, "y": 106.19, "w": 50.00, "size": 8.5},
+    "addr_state": {"kind": "text", "x": 151.60, "y": 106.19, "w": 46.64, "size": 8.5},
+    "doc_poi": {"kind": "text", "x": 120.76, "y": 110.30, "w": 77.48, "size": 8.5},
+    "doc_poa": {"kind": "text", "x": 123.56, "y": 114.40, "w": 74.68, "size": 8.5},
+    "doc_pdb": {"kind": "text", "x": 143.10, "y": 118.55, "w": 55.14, "size": 8.5},
+    "mother_name": {"kind": "text", "x": 80.32, "y": 128.63, "w": 45.32, "size": 8.5},
+    "father_name": {"kind": "text", "x": 79.60, "y": 137.09, "w": 46.04, "size": 8.5},
+    "guardian_name": {"kind": "text", "x": 61.33, "y": 153.56, "w": 64.31, "size": 8.5},
+    "doc_por": {"kind": "text", "x": 112.58, "y": 161.82, "w": 85.66, "size": 8.5}
+  }
+}

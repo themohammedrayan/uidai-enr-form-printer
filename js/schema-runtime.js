@@ -277,6 +277,18 @@
 
   // ---- queue list rendering ---------------------------------------------------
 
+  // subtitlePath may resolve to a plain string (radioGroup-shaped field, e.g.
+  // Form 1/3's single "relationship") or a {key: bool} object (checkboxGroup-
+  // shaped, e.g. Form 5's multi-select "Mother AND/OR Father") -- normalize
+  // either into display text.
+  function summaryText(value) {
+    if (value && typeof value === "object") {
+      var picked = Object.keys(value).filter(function (k) { return value[k]; });
+      return picked.length ? picked.join("/") : "—";
+    }
+    return value || "—";
+  }
+
   function renderQueueList(schema, queue, ulElement, handlers) {
     ulElement.innerHTML = "";
     queue.forEach(function (rec, idx) {
@@ -288,7 +300,7 @@
       var small = document.createElement("small");
       var aadhaarVal = getPath(rec, schema.summary.aadhaarPath) || "";
       var aadhaarTail = aadhaarVal ? "•••• •••• " + aadhaarVal.slice(8) : "—";
-      var subtitle = getPath(rec, schema.summary.subtitlePath) || "—";
+      var subtitle = summaryText(getPath(rec, schema.summary.subtitlePath));
       small.textContent = subtitle + " · Aadhaar " + aadhaarTail;
       who.appendChild(strong);
       who.appendChild(small);

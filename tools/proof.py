@@ -128,11 +128,18 @@ def build_overlay(template, sample, page_w_pt, page_h_pt):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("pdf", help="Path to the real Form_1_Eng.pdf")
+    ap.add_argument("pdf", help="Path to the real form PDF")
     ap.add_argument("--template", default="templates/form1-en.json")
+    ap.add_argument("--sample", help="Path to a JSON file of {fieldName: value} sample data. "
+                                      "Omit to use the built-in SAMPLE (Form 1's field names).")
     ap.add_argument("--out", default="proof.png")
     ap.add_argument("--dpi", type=int, default=200)
     args = ap.parse_args()
+
+    sample = SAMPLE
+    if args.sample:
+        with open(args.sample) as fh:
+            sample = json.load(fh)
 
     try:
         from pypdf import PdfReader, PdfWriter
@@ -160,7 +167,7 @@ def main():
             file=sys.stderr,
         )
 
-    overlay_buf = build_overlay(template, SAMPLE, page_w_pt, page_h_pt)
+    overlay_buf = build_overlay(template, sample, page_w_pt, page_h_pt)
     overlay_reader = PdfReader(overlay_buf)
 
     writer = PdfWriter()
